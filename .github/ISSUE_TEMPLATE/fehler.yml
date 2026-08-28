@@ -1,0 +1,33 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet
+labels: [fehler]
+body:
+  - type: textarea
+    id: was
+    attributes:
+      label: Was passiert?
+      description: Und was hätten Sie stattdessen erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Schritte zum Nachstellen
+      placeholder: |
+        1. Rechnung anlegen mit …
+        2. Auf „Freigeben" klicken
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version oder Commit
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Protokollausgabe
+      description: "`docker logs invoicelite` – bitte Zugangsdaten entfernen."
+      render: shell

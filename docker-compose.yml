@@ -1,0 +1,44 @@
+# invoicelite – ein Container, eine Datei, fertig.
+#
+#   docker compose up -d
+#
+# Beim ersten Start wird ein Administratorkonto angelegt und die Oberfläche
+# führt durch die Einrichtung. Danach erreichbar unter http://localhost:8080
+
+services:
+  invoicelite:
+    # Wird beim ersten Start aus dem Quelltext gebaut. Das dauert einige
+    # Minuten, spart aber eine Registry - und der laufende Stand entspricht
+    # genau dem geklonten.
+    build: .
+    image: invoicelite:latest
+    container_name: invoicelite
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+    environment:
+      # Erstes Administratorkonto. Wird nur beim allerersten Start angelegt.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      # Leer lassen: dann wird ein Zufallspasswort erzeugt und einmalig ins
+      # Log geschrieben. Das ist sicherer, als eines in dieser Datei zu
+      # hinterlegen - sie landet sonst in der Versionsverwaltung.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Zeitzone für den nächtlichen Lauf und den Mailversand
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      # Enthält die SQLite-Datei, das Logo und die Ausgabenbelege.
+      # Ohne dieses Volume sind nach einem Neustart alle Daten weg.
+      - invoicelite-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  invoicelite-data:

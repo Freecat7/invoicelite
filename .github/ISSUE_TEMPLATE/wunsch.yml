@@ -1,0 +1,15 @@
+name: Funktion vorschlagen
+description: Eine Idee für invoicelite
+labels: [wunsch]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem lösen Sie damit?
+      description: Bitte das Problem beschreiben, nicht nur die gewünschte Lösung.
+    validations:
+      required: true
+  - type: textarea
+    id: idee
+    attributes:
+      label: Wie könnte es aussehen?

@@ -1,0 +1,63 @@
+name: Build und Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pruefen:
+    name: Typen, Build und API-Testlauf
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend – Typen prüfen
+        working-directory: backend
+        run: |
+          npm ci --no-audit --no-fund
+          npx prisma generate
+          npx tsc --noEmit
+
+      - name: Frontend – Typen prüfen
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsc -b
+
+      - name: Abbild bauen
+        run: docker build -t invoicelite:ci .
+
+      - name: Instanz starten
+        run: |
+          docker run -d --name invoicelite-ci -p 8099:3000 \
+            -e ADMIN_EMAIL=test@example.com \
+            -e ADMIN_PASSWORD=test-passwort-123 \
+            -e TZ=Europe/Berlin \
+            invoicelite:ci
+          # Warten, bis die Anwendung antwortet - ein festes sleep waere
+          # entweder zu kurz oder verschenkte Zeit.
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:8099/api/health && exit 0
+            sleep 2
+          done
+          echo "Anwendung ist nicht hochgekommen:"
+          docker logs invoicelite-ci
+          exit 1
+
+      - name: API-Testlauf
+        run: python3 scripts/api-test.py http://localhost:8099
+
+      - name: Protokoll bei Fehlschlag
+        if: failure()
+        run: docker logs invoicelite-ci

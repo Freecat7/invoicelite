@@ -1,0 +1,419 @@
+// Datenmodell invoicelite — single-tenant Rechnungsverwaltung.
+// Statuswerte sind Strings, da SQLite in Prisma keine Enums unterstuetzt;
+// die gueltigen Werte stehen in src/constants.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  name         String     @default("")
+  createdAt    DateTime   @default(now())
+  tokens       ApiToken[]
+}
+
+model ApiToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String
+  tokenHash  String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+}
+
+// Einzeiliger Datensatz (id = 1) mit allen Firmen- und Standardeinstellungen.
+model CompanySettings {
+  id Int @id @default(1)
+
+  // Firmendaten
+  companyName String @default("")
+  addressLine String @default("")
+  postalCode  String @default("")
+  city        String @default("")
+  country     String @default("DE")
+  vatId       String @default("")
+  taxNumber   String @default("")
+  // Inhaber/in fuer die Fusszeile
+  ownerName   String @default("")
+  // Farbe des Fusszeilen-Balkens
+  accentColor String @default("#2E2B2A")
+  // Akzentfarbe der Oberflaeche. Getrennt von accentColor, weil das ein
+  // Balkenton fuer den Belegfuss ist - als Farbe fuer Schaltflaechen waere
+  // er unbrauchbar. Die Toene je Farbschema werden daraus abgeleitet.
+  uiAccentColor String @default("#2f6f4f")
+  // Steuert, ob der Einrichtungsassistent laeuft. Bei bestehenden
+  // Installationen setzt die Migration ihn auf true, damit dort nichts
+  // aufpoppt.
+  setupCompleted Boolean @default(false)
+  // Name der Anwendung in Oberflaeche und Anmeldung. Wer die Software unter
+  // eigenem Namen betreibt, aendert das hier statt im Quelltext.
+  appName        String  @default("invoicelite")
+  email       String @default("")
+  phone       String @default("")
+  website     String @default("")
+  logoPath    String @default("")
+
+  // Bankverbindung (Basis fuer den EPC-QR-Code)
+  bankName      String @default("")
+  iban          String @default("")
+  bic           String @default("")
+  accountHolder String @default("")
+
+  // Nummernkreise
+  invoiceNumberPrefix  String @default("RE-")
+  invoiceNumberNext    Int    @default(1)
+  invoiceNumberPadding Int    @default(4)
+  quoteNumberPrefix    String @default("AN-")
+  quoteNumberNext      Int    @default(1)
+  quoteNumberPadding   Int    @default(4)
+  // Artikelnummern werden wie Belegnummern fortlaufend vergeben, wenn beim
+  // Anlegen keine eigene angegeben wird.
+  productNumberPrefix  String @default("ART-")
+  productNumberNext    Int    @default(1)
+  productNumberPadding Int    @default(4)
+  creditNumberPrefix   String @default("GS-")
+  creditNumberNext     Int    @default(1)
+  creditNumberPadding  Int    @default(4)
+
+  // Vorgabewerte fuer neue Belege
+  currency       String @default("EUR")
+  locale         String @default("de-DE")
+  defaultTaxRate Float  @default(19)
+  // standard | small_business | reverse_charge
+  taxRegime      String @default("standard")
+  paymentTermDays Int   @default(14)
+  defaultTerms   String @default("")
+  defaultFooter  String @default("")
+  defaultNotes   String @default("")
+  // Eigene Vorgabetexte fuer Angebote. Die Rechnungstexte sprechen von
+  // Zahlungsziel, Rechnungsbetrag und Rechnungsnummer - auf einem Angebot
+  // ist davon nichts zutreffend, es verlangt noch keine Zahlung.
+  defaultQuoteTerms String @default("")
+  defaultQuoteNotes String @default("")
+
+  // E-Rechnung: "off" | "zugferd" | "xrechnung"
+  eInvoiceFormat String @default("off")
+  buyerReference String @default("")
+
+  // PDF
+  showEpcQr Boolean @default(true)
+
+  // --- Mailversand ---
+  smtpHost        String  @default("")
+  smtpPort        Int     @default(587)
+  // true = durchgehend verschluesselt (Port 465), false = STARTTLS (587)
+  smtpSecure      Boolean @default(false)
+  smtpUser        String  @default("")
+  // Verschluesselt abgelegt, nicht im Klartext - siehe services/secrets.ts
+  smtpPasswordEnc String  @default("")
+  mailFromName    String  @default("")
+  mailFromEmail   String  @default("")
+  mailReplyTo     String  @default("")
+  mailBcc         String  @default("")
+  mailEnabled     Boolean @default(false)
+  // Uhrzeit des taeglichen Versandlaufs, HH:MM
+  mailSendTime    String  @default("09:00")
+  mailSubject     String  @default("Rechnung {nummer}")
+  mailBody        String  @default("")
+  // HTML-Fassung samt Signatur. Ist sie gesetzt, geht die Mail zweiteilig
+  // hinaus: HTML fuer uebliche Programme, Text als Rueckfallebene.
+  mailBodyHtml    String  @default("")
+  // pdf | zugferd | xrechnung
+  mailAttachment  String  @default("pdf")
+
+  // Angebotsmail - eigener Text, weil ein Angebot nichts einfordert.
+  quoteMailSubject  String @default("Angebot {nummer}")
+  quoteMailBody     String @default("")
+  quoteMailBodyHtml String @default("")
+
+  // --- Kopie im Ordner "Gesendet" ---
+  // SMTP stellt nur zu; eine Kopie im Postfach entsteht dabei nicht. Dafuer
+  // wird die Nachricht zusaetzlich per IMAP abgelegt.
+  imapCopyEnabled  Boolean @default(false)
+  imapHost         String  @default("")
+  imapPort         Int     @default(993)
+  imapSecure       Boolean @default(true)
+  imapUser         String  @default("")
+  imapPasswordEnc  String  @default("")
+  // Leer = Ordner automatisch bestimmen (Sonderordner \Sent, sonst
+  // gaengige Namen wie "Sent" oder "Gesendet").
+  imapSentFolder   String  @default("")
+
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id          Int      @id @default(autoincrement())
+  name        String
+  contactName String   @default("")
+  email       String   @default("")
+  phone       String   @default("")
+  addressLine String   @default("")
+  postalCode  String   @default("")
+  city        String   @default("")
+  country     String   @default("DE")
+  vatId       String   @default("")
+  notes       String   @default("")
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  invoices          Invoice[]
+  quotes            Quote[]
+  recurringInvoices RecurringInvoice[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  sku         String   @default("")
+  name        String
+  description String   @default("")
+  unitPrice   Float    @default(0)
+  unit        String   @default("Stk.")
+  taxRate     Float    @default(19)
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Invoice {
+  id       Int    @id @default(autoincrement())
+  number   String @unique
+  clientId Int
+  client   Client @relation(fields: [clientId], references: [id])
+
+  // "invoice" = Rechnung, "credit" = Gutschrift (eigener Nummernkreis)
+  docType String @default("invoice")
+
+  issueDate DateTime @default(now())
+  dueDate   DateTime
+  // Leistungsdatum bzw. Leistungszeitraum (Pflichtangabe nach § 14 UStG)
+  serviceDateFrom DateTime?
+  serviceDateTo   DateTime?
+  // draft | approved | sent | partial | paid | overdue | cancelled | reversed
+  status    String   @default("draft")
+  // Zeitpunkt der Freigabe - der taegliche Mailversand nimmt sich nur, was
+  // vor dem heutigen Tag freigegeben wurde.
+  approvedAt DateTime?
+  // Versand per Mail: Zeitpunkt, Versuche und letzter Fehler.
+  mailedAt     DateTime?
+  mailAttempts Int      @default(0)
+  mailError    String   @default("")
+  sentAt    DateTime?
+
+  // standard | small_business (§ 19 UStG) | reverse_charge (§ 13b UStG)
+  taxRegime String @default("standard")
+
+  // Ursprungsbeleg bei Gutschriften
+  creditForInvoiceId Int?
+
+  currency       String @default("EUR")
+  discountValue  Float  @default(0)
+  // "percent" | "fixed"
+  discountType   String @default("percent")
+
+  subtotal   Float @default(0)
+  taxTotal   Float @default(0)
+  total      Float @default(0)
+  amountPaid Float @default(0)
+
+  notes  String @default("")
+  terms  String @default("")
+  footer String @default("")
+
+  recurringInvoiceId Int?
+  recurringInvoice   RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines    InvoiceLine[]
+  payments Payment[]
+}
+
+model InvoiceLine {
+  id        Int     @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  position    Int    @default(0)
+  description String
+  quantity    Float  @default(1)
+  unit        String @default("Stk.")
+  unitPrice   Float  @default(0)
+  taxRate     Float  @default(19)
+  lineTotal   Float  @default(0)
+}
+
+model RecurringInvoice {
+  id       Int    @id @default(autoincrement())
+  clientId Int
+  client   Client @relation(fields: [clientId], references: [id])
+
+  title String @default("")
+  // weekly | monthly | quarterly | yearly
+  frequency String @default("monthly")
+  nextRunDate DateTime
+  endDate     DateTime?
+  remainingCycles Int?
+  // active | paused | finished
+  status String @default("active")
+
+  currency      String @default("EUR")
+  discountValue Float  @default(0)
+  discountType  String @default("percent")
+  paymentTermDays Int  @default(14)
+  taxRegime       String @default("standard")
+  // Status, in dem erzeugte Rechnungen landen: "draft" oder "approved"
+  generateAs      String @default("draft")
+
+  notes  String @default("")
+  terms  String @default("")
+  footer String @default("")
+
+  lastRunAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lines            RecurringInvoiceLine[]
+  generatedInvoices Invoice[]
+}
+
+model RecurringInvoiceLine {
+  id                 Int              @id @default(autoincrement())
+  recurringInvoiceId Int
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+
+  position    Int    @default(0)
+  description String
+  quantity    Float  @default(1)
+  unit        String @default("Stk.")
+  unitPrice   Float  @default(0)
+  taxRate     Float  @default(19)
+  lineTotal   Float  @default(0)
+}
+
+model Payment {
+  id        Int     @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  date      DateTime @default(now())
+  amount    Float
+  // bank_transfer | cash | card | paypal | direct_debit | other
+  method    String   @default("bank_transfer")
+  reference String   @default("")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model Quote {
+  id       Int    @id @default(autoincrement())
+  number   String @unique
+  clientId Int
+  client   Client @relation(fields: [clientId], references: [id])
+
+  issueDate DateTime  @default(now())
+  validUntil DateTime?
+  sentAt     DateTime?
+  // draft | sent | approved | declined | converted | expired
+  status    String    @default("draft")
+
+  currency      String @default("EUR")
+  // Beim Anlegen aus den Einstellungen uebernommen und dann festgehalten.
+  // Ein verschicktes Angebot darf sich nicht aendern, wenn die Firma
+  // spaeter die Besteuerung wechselt - der Kunde hat einen konkreten
+  // Preis erhalten.
+  taxRegime     String @default("standard")
+  discountValue Float  @default(0)
+  discountType  String @default("percent")
+
+  subtotal Float @default(0)
+  taxTotal Float @default(0)
+  total    Float @default(0)
+
+  notes  String @default("")
+  terms  String @default("")
+  footer String @default("")
+
+  convertedInvoiceId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines QuoteLine[]
+}
+
+model QuoteLine {
+  id      Int   @id @default(autoincrement())
+  quoteId Int
+  quote   Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  position    Int    @default(0)
+  description String
+  quantity    Float  @default(1)
+  unit        String @default("Stk.")
+  unitPrice   Float  @default(0)
+  taxRate     Float  @default(19)
+  lineTotal   Float  @default(0)
+}
+
+model Expense {
+  id       Int      @id @default(autoincrement())
+  date     DateTime @default(now())
+  vendor   String   @default("")
+  category String   @default("")
+
+  // Nettobetrag; Steuer wird daraus berechnet
+  amount   Float  @default(0)
+  taxRate  Float  @default(19)
+  taxAmount Float @default(0)
+  total    Float  @default(0)
+  currency String @default("EUR")
+
+  description    String @default("")
+  reference      String @default("")
+  attachmentPath String @default("")
+  // pending | paid | reimbursed
+  status String @default("paid")
+
+  recurringExpenseId Int?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RecurringExpense {
+  id       Int    @id @default(autoincrement())
+  vendor   String @default("")
+  category String @default("")
+
+  amount   Float  @default(0)
+  taxRate  Float  @default(19)
+  currency String @default("EUR")
+
+  description String @default("")
+
+  frequency       String    @default("monthly")
+  nextRunDate     DateTime
+  endDate         DateTime?
+  remainingCycles Int?
+  status          String    @default("active")
+
+  lastRunAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  generatedExpenses Expense[]
+}
