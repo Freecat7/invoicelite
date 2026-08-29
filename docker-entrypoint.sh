@@ -37,7 +37,14 @@ rm -f "$DATA_DIR/.schreibprobe"
 # so sechs. Eine Verbindung reiht sie stattdessen auf.
 export DATABASE_URL="${DATABASE_URL:-file:${DATA_DIR}/invoicelite.db?connection_limit=1&socket_timeout=20}"
 
+# Prisma meldet sich sonst bei jedem Start an checkpoint.prisma.io, um nach
+# Aktualisierungen zu sehen. Eine Rechnungssoftware auf dem eigenen Server
+# soll nicht nach draussen funken.
+export CHECKPOINT_DISABLE=1
+
 echo "invoicelite: wende Datenbank-Migrationen an…"
-npx prisma migrate deploy
+# Direkt die mitgelieferte Datei aufrufen statt ueber npx - npx fragt sonst
+# die npm-Registry, obwohl das Paket schon im Abbild liegt.
+node node_modules/prisma/build/index.js migrate deploy
 
 exec "$@"

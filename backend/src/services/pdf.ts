@@ -31,6 +31,25 @@ async function getBrowser(): Promise<Browser> {
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--font-render-hinting=none',
+          // Chromium ruft bei jedem Start Google-Dienste auf - gemessen
+          // clients2.google.com, www.google.com, accounts.google.com und
+          // mtalk.google.com je PDF. Die einschlaegigen Schalter allein
+          // haben das nicht gestoppt, deshalb bekommt Chromium gar keine
+          // Namensaufloesung mehr: Das Dokument bindet Schriften, Logo und
+          // QR-Code ohnehin vollstaendig ein und braucht kein Netz.
+          '--host-resolver-rules=MAP * ~NOTFOUND',
+          '--disable-background-networking',
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--disable-client-side-phishing-detection',
+          '--safebrowsing-disable-auto-update',
+          '--disable-sync',
+          '--disable-default-apps',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--no-pings',
+          '--metrics-recording-only',
+          '--disable-breakpad',
         ],
       })
       .catch((err) => {

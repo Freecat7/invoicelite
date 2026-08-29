@@ -20,6 +20,26 @@ im Profil hinterlegte Adresse. Ich melde mich innerhalb weniger Tage.
 - Die Sicherung enthält das Sitzungsgeheimnis bewusst **nicht** – eine abhanden
   gekommene Sicherung soll keine gültigen Anmeldungen erzeugen können.
 
+## Verbindungen nach außen
+
+Die Anwendung spricht im Betrieb mit **niemandem** außer dem Postausgangsserver, den Sie
+selbst eintragen. Nachgemessen mit einem mitschreibenden DNS-Server: null Namensauflösungen
+beim Start und beim Erzeugen von PDFs.
+
+Dafür waren zwei Dinge nötig:
+
+- **Prisma** meldete sich bei jedem Start an `checkpoint.prisma.io`, um nach Aktualisierungen
+  zu sehen; `npx` fragte zusätzlich die npm-Registry. Beides ist abgeschaltet
+  (`CHECKPOINT_DISABLE`, direkter Aufruf der mitgelieferten Datei).
+- **Chromium** rief bei jeder PDF-Erzeugung `clients2.google.com`, `www.google.com`,
+  `accounts.google.com` und `mtalk.google.com` auf. Die üblichen Schalter
+  (`--disable-background-networking` und weitere) haben das nicht gestoppt, deshalb bekommt
+  Chromium über `--host-resolver-rules=MAP * ~NOTFOUND` gar keine Namensauflösung mehr. Das
+  Dokument bindet Schriften, Logo und QR-Code vollständig ein und braucht kein Netz.
+
+Wer das nachprüfen will: Container an einen DNS-Server mit Protokollierung hängen
+(`--dns`), eine Rechnung erzeugen, Protokoll ansehen.
+
 ## Was invoicelite nicht tut
 
 - **Kein TLS.** Die Anwendung spricht HTTP. Für den Betrieb über das Internet
