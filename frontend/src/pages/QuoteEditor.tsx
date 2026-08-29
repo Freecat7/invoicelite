@@ -260,6 +260,7 @@ export function QuoteEditorPage({ settings }: { settings: Settings }) {
         <div className="card-head">Positionen</div>
         <div className="card-body">
           <LineItemEditor
+            taxRegime={form.taxRegime}
             lines={form.lines}
             onChange={(lines) => patch({ lines })}
             products={products}

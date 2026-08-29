@@ -17,6 +17,7 @@ export function LineItemEditor({
   discountType,
   onDiscountChange,
   defaultTaxRate,
+  taxRegime = 'standard',
   readOnly = false,
 }: {
   lines: DocumentLine[];
@@ -27,10 +28,12 @@ export function LineItemEditor({
   discountType: 'percent' | 'fixed';
   onDiscountChange: (value: number, type: 'percent' | 'fixed') => void;
   defaultTaxRate: number;
+  /** Bestimmt, ob in der Vorschau Umsatzsteuer ausgewiesen wird. */
+  taxRegime?: string;
   /** Festgeschriebener Beleg: alle Bedienelemente gesperrt. */
   readOnly?: boolean;
 }) {
-  const totals = computeTotals(lines, discountValue, discountType);
+  const totals = computeTotals(lines, discountValue, discountType, taxRegime);
 
   const update = (index: number, patch: Partial<DocumentLine>) => {
     onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));

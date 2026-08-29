@@ -49,3 +49,48 @@ export function addInterval(date: Date, frequency: string): Date {
       return addMonateUtc(date, 1);
   }
 }
+
+/** Erster Tag des Monats, in dem das Datum liegt. */
+export function monatsBeginnUtc(date: Date, versatzMonate = 0): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + versatzMonate, 1),
+  );
+}
+
+/** Letzter Tag des Monats - Tag 0 des Folgemonats. */
+export function monatsEndeUtc(date: Date, versatzMonate = 0): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + versatzMonate + 1, 0),
+  );
+}
+
+/**
+ * Leistungszeitraum einer erzeugten Rechnung.
+ *
+ * Feste Daten an der Vorlage waeren unbrauchbar - sie waeren jeden Monat
+ * dieselben. Deshalb wird der Zeitraum aus dem Rechnungsdatum abgeleitet.
+ */
+export function leistungszeitraum(
+  art: string,
+  rechnungsdatum: Date,
+  naechsterLauf: Date,
+): { von: Date; bis: Date } | null {
+  switch (art) {
+    case 'issueMonth':
+      return {
+        von: monatsBeginnUtc(rechnungsdatum),
+        bis: monatsEndeUtc(rechnungsdatum),
+      };
+    case 'previousMonth':
+      return {
+        von: monatsBeginnUtc(rechnungsdatum, -1),
+        bis: monatsEndeUtc(rechnungsdatum, -1),
+      };
+    case 'untilNextRun':
+      // Bis einen Tag vor dem naechsten Lauf, sonst ueberlappen sich
+      // aufeinanderfolgende Rechnungen an der Nahtstelle um einen Tag.
+      return { von: rechnungsdatum, bis: addTageUtc(naechsterLauf, -1) };
+    default:
+      return null;
+  }
+}

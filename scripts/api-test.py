@@ -658,6 +658,50 @@ s, dk = call("GET", f"/dashboard?period=year&year={heute_jahr + 1}")
 check("Übersicht für das kommende Jahr abrufbar",
       s == 200 and dk["period"]["label"] == str(heute_jahr + 1), f"{s}")
 
+# Leistungszeitraum wird je Lauf aus dem Rechnungsdatum abgeleitet
+zeile_lz = [{"description": "Wartung", "quantity": 1, "unitPrice": 100, "taxRate": 19}]
+faelle = [
+    ("issueMonth",    "2026-03-01", "2026-03-01", "2026-03-31"),
+    ("previousMonth", "2026-03-01", "2026-02-01", "2026-02-28"),
+    ("untilNextRun",  "2026-03-01", "2026-03-01", "2026-03-31"),
+]
+for art, lauf, von_soll, bis_soll in faelle:
+    s, t = call("POST", "/recurring-invoices", {
+        "clientId": KUNDE, "title": f"LZ-{art}", "frequency": "monthly",
+        "nextRunDate": lauf, "servicePeriod": art, "generateAs": "draft",
+        "lines": zeile_lz})
+    check(f"Leistungszeitraum {art} wird gespeichert",
+          t.get("servicePeriod") == art, str(t.get("servicePeriod")))
+    call("POST", "/recurring-invoices/run")
+    s, d = call("GET", f"/recurring-invoices/{t['id']}")
+    letzte = sorted(d["generatedInvoices"], key=lambda i: i["id"])[-1]
+    s, v = call("GET", f"/invoices/{letzte['id']}")
+    check(f"{art}: Zeitraum {von_soll} bis {bis_soll}",
+          (v.get("serviceDateFrom") or "")[:10] == von_soll
+          and (v.get("serviceDateTo") or "")[:10] == bis_soll,
+          f'{(v.get("serviceDateFrom") or "-")[:10]} bis {(v.get("serviceDateTo") or "-")[:10]}')
+    call("PUT", f"/recurring-invoices/{t['id']}", {
+        "clientId": KUNDE, "title": "x", "frequency": "monthly",
+        "nextRunDate": "2099-01-01", "status": "paused", "lines": zeile_lz})
+
+s, t = call("POST", "/recurring-invoices", {
+    "clientId": KUNDE, "title": "LZ-ohne", "frequency": "monthly",
+    "nextRunDate": "2026-03-01", "generateAs": "draft", "lines": zeile_lz})
+call("POST", "/recurring-invoices/run")
+s, d = call("GET", f"/recurring-invoices/{t['id']}")
+s, v = call("GET", f"/invoices/{sorted(d['generatedInvoices'], key=lambda i: i['id'])[-1]['id']}")
+check("ohne Angabe bleibt der Zeitraum leer",
+      not v.get("serviceDateFrom") and not v.get("serviceDateTo"),
+      str(v.get("serviceDateFrom")))
+call("PUT", f"/recurring-invoices/{t['id']}", {
+    "clientId": KUNDE, "title": "x", "frequency": "monthly",
+    "nextRunDate": "2099-01-01", "status": "paused", "lines": zeile_lz})
+
+s, b = call("POST", "/recurring-invoices", {
+    "clientId": KUNDE, "title": "x", "frequency": "monthly",
+    "nextRunDate": "2026-03-01", "servicePeriod": "quatsch", "lines": zeile_lz})
+check("unbekannter Leistungszeitraum 400", s == 400, f"war {s}")
+
 # ───────────────────────── Ausgaben ─────────────────────────
 head("Ausgaben")
 s, exp = call("POST", "/expenses", {

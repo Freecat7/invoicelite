@@ -276,6 +276,14 @@ model RecurringInvoice {
   taxRegime       String @default("standard")
   // Status, in dem erzeugte Rechnungen landen: "draft" oder "approved"
   generateAs      String @default("draft")
+  // Leistungszeitraum der erzeugten Rechnung. Feste Daten waeren hier
+  // falsch - sie waeren jeden Monat dieselben. Stattdessen wird der
+  // Zeitraum je Lauf aus dem Rechnungsdatum abgeleitet:
+  //   none          - kein Leistungszeitraum
+  //   issueMonth    - Monat des Rechnungsdatums (1. bis Monatsletzter)
+  //   previousMonth - der Vormonat (Abrechnung im Nachhinein)
+  //   untilNextRun  - Rechnungsdatum bis einen Tag vor dem naechsten Lauf
+  servicePeriod   String @default("none")
 
   notes  String @default("")
   terms  String @default("")

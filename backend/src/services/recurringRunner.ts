@@ -1,7 +1,7 @@
 import { prisma } from '../db';
 import { computeTotals, round2 } from './totals';
 import { nextNumberIn } from './numbering';
-import { addInterval, addTageUtc } from './dates';
+import { addInterval, addTageUtc, leistungszeitraum } from './dates';
 
 /**
  * Erzeugt faellige Belege aus den wiederkehrenden Vorlagen.
@@ -41,6 +41,13 @@ async function runRecurringInvoices(result: RunResult): Promise<void> {
     );
     const issueDate = new Date(template.nextRunDate);
     const dueDate = addTageUtc(issueDate, template.paymentTermDays);
+    // Der Zeitraum richtet sich nach dem Rechnungsdatum, nicht nach festen
+    // Werten an der Vorlage - sonst stuende jeden Monat derselbe da.
+    const zeitraum = leistungszeitraum(
+      template.servicePeriod,
+      issueDate,
+      addInterval(template.nextRunDate, template.frequency),
+    );
 
     // Nummer und Beleg in einer Transaktion, damit ein Fehlschlag keine
     // Luecke im Nummernkreis hinterlaesst.
@@ -59,6 +66,9 @@ async function runRecurringInvoices(result: RunResult): Promise<void> {
         approvedAt:
           template.generateAs === 'approved' ? new Date() : null,
         taxRegime: template.taxRegime,
+        ...(zeitraum
+          ? { serviceDateFrom: zeitraum.von, serviceDateTo: zeitraum.bis }
+          : {}),
         currency: template.currency,
         discountValue: template.discountValue,
         discountType: template.discountType,

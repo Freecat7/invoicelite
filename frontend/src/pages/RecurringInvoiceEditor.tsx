@@ -8,15 +8,7 @@ import {
   RecurringInvoice,
   Settings,
 } from '../types';
-import {
-  FREQUENCY_LABELS,
-  GENERATE_AS_LABELS,
-  RECURRING_STATUS_LABELS,
-  dateInputValue,
-  formatDate,
-  money,
-  today,
-} from '../format';
+import { FREQUENCY_LABELS, GENERATE_AS_LABELS, RECURRING_STATUS_LABELS, SERVICE_PERIOD_LABELS, TAX_REGIME_LABELS, dateInputValue, formatDate, money, today } from '../format';
 import { PageHead } from '../components/Layout';
 import { LineItemEditor } from '../components/LineItemEditor';
 import {
@@ -37,6 +29,8 @@ interface FormState {
   remainingCycles: string;
   status: string;
   currency: string;
+  taxRegime: string;
+  servicePeriod: string;
   discountValue: number;
   discountType: 'percent' | 'fixed';
   paymentTermDays: number;
@@ -75,6 +69,8 @@ export function RecurringInvoiceEditorPage({ settings }: { settings: Settings })
     remainingCycles: '',
     status: 'active',
     currency: settings.currency,
+    taxRegime: settings.taxRegime,
+    servicePeriod: 'none',
     discountValue: 0,
     discountType: 'percent',
     paymentTermDays: settings.paymentTermDays,
@@ -111,6 +107,8 @@ export function RecurringInvoiceEditorPage({ settings }: { settings: Settings })
             loaded.remainingCycles === null ? '' : String(loaded.remainingCycles),
           status: loaded.status,
           currency: loaded.currency,
+          taxRegime: loaded.taxRegime,
+          servicePeriod: loaded.servicePeriod || 'none',
           discountValue: loaded.discountValue,
           discountType: loaded.discountType,
           paymentTermDays: loaded.paymentTermDays,
@@ -278,6 +276,23 @@ export function RecurringInvoiceEditorPage({ settings }: { settings: Settings })
             }))}
             hint="Freigegebene Rechnungen können direkt von einem Versand-Workflow abgeholt werden."
           />
+          <Select
+            label="Leistungszeitraum"
+            value={form.servicePeriod}
+            onChange={(v) => patch({ servicePeriod: v })}
+            hint="Wird je Lauf aus dem Rechnungsdatum berechnet – feste Daten wären jeden Monat dieselben."
+            options={Object.entries(SERVICE_PERIOD_LABELS).map(
+              ([value, label]) => ({ value, label }),
+            )}
+          />
+          <Select
+            label="Steuerregelung"
+            value={form.taxRegime}
+            onChange={(v) => patch({ taxRegime: v })}
+            options={Object.entries(TAX_REGIME_LABELS).map(
+              ([value, label]) => ({ value, label }),
+            )}
+          />
 
           {template && (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -294,6 +309,7 @@ export function RecurringInvoiceEditorPage({ settings }: { settings: Settings })
         <div className="card-head">Positionen</div>
         <div className="card-body">
           <LineItemEditor
+            taxRegime={form.taxRegime}
             lines={form.lines}
             onChange={(lines) => patch({ lines })}
             products={products}

@@ -39,6 +39,9 @@ const recurringSchema = z.object({
   taxRegime: z.enum(TAX_REGIMES).optional(),
   // Zielstatus der erzeugten Rechnungen
   generateAs: z.enum(GENERATE_AS_STATUSES).default('draft'),
+  servicePeriod: z
+    .enum(['none', 'issueMonth', 'previousMonth', 'untilNextRun'])
+    .default('none'),
   notes: z.string().default(''),
   terms: z.string().default(''),
   footer: z.string().default(''),
@@ -124,6 +127,7 @@ recurringInvoiceRouter.post(
           paymentTermDays: data.paymentTermDays,
           taxRegime,
           generateAs: data.generateAs,
+          servicePeriod: data.servicePeriod,
           notes: data.notes || settings.defaultNotes,
           terms: data.terms || settings.defaultTerms,
           footer: data.footer || settings.defaultFooter,
@@ -181,6 +185,7 @@ recurringInvoiceRouter.put(
           paymentTermDays: data.paymentTermDays,
           taxRegime,
           generateAs: data.generateAs,
+          servicePeriod: data.servicePeriod,
           notes: data.notes,
           terms: data.terms,
           footer: data.footer,

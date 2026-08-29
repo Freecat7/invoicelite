@@ -182,3 +182,11 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   direct_debit: 'Lastschrift',
   other: 'Sonstiges',
 };
+
+/** Wie der Leistungszeitraum erzeugter Rechnungen bestimmt wird. */
+export const SERVICE_PERIOD_LABELS: Record<string, string> = {
+  none: 'Keiner',
+  issueMonth: 'Monat des Rechnungsdatums',
+  previousMonth: 'Vormonat',
+  untilNextRun: 'Bis zum nächsten Lauf',
+};

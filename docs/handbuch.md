@@ -463,6 +463,25 @@ Sitzungs-Cookie automatisch als `secure` gesetzt.
 
 ## Wiederkehrende Belege
 
+### Leistungszeitraum
+
+Wer monatlich eine Wartungspauschale stellt, will den abgedeckten Zeitraum auf der Rechnung
+stehen haben. Feste Daten an der Vorlage wären dafür unbrauchbar – sie stünden jeden Monat
+gleich da. Deshalb wird der Zeitraum je Lauf aus dem Rechnungsdatum abgeleitet:
+
+| Einstellung | Bei einem Lauf am 01.03.2026 |
+| --- | --- |
+| Keiner | kein Leistungszeitraum auf dem Beleg |
+| Monat des Rechnungsdatums | 01.03.2026 – 31.03.2026 |
+| Vormonat | 01.02.2026 – 28.02.2026 |
+| Bis zum nächsten Lauf | 01.03.2026 – 31.03.2026 |
+
+*Bis zum nächsten Lauf* richtet sich nach dem Rhythmus und endet einen Tag vor dem nächsten
+Termin – vierteljährlich also 01.01. – 31.03., jährlich 01.01. – 31.12. So überlappen sich
+aufeinanderfolgende Rechnungen nicht.
+
+
+
 Ein Cron-Lauf um **02:30 Uhr** (Zeitzone aus `TZ`) erzeugt alle fälligen Rechnungen und
 Ausgaben, setzt `nextRunDate` weiter, zählt `remainingCycles` herunter und markiert
 erschöpfte Vorlagen als beendet. Zusätzlich werden überfällige Rechnungen auf *Überfällig*

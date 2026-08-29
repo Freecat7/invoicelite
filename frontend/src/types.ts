@@ -200,6 +200,7 @@ export interface RecurringInvoice {
   lastRunAt: string | null;
   lines: DocumentLine[];
   _count?: { generatedInvoices: number };
+  servicePeriod: string;
 }
 
 export interface Payment {

@@ -31,11 +31,23 @@ export function lineTotal(line: DocumentLine): number {
   return round2(Number(line.quantity || 0) * Number(line.unitPrice || 0));
 }
 
+/**
+ * Bei Kleinunternehmer (§ 19) und Reverse Charge (§ 13b) wird keine
+ * Umsatzsteuer ausgewiesen - genau wie im Backend. Fehlte das hier, zeigte
+ * die Vorschau bis zum Speichern weiter 19 %, obwohl die Regelung schon
+ * umgestellt war.
+ */
+function istNullsatz(regime: string): boolean {
+  return regime === 'small_business' || regime === 'reverse_charge';
+}
+
 export function computeTotals(
   lines: DocumentLine[],
   discountValue = 0,
   discountType = 'percent',
+  taxRegime = 'standard',
 ): Totals {
+  const nullsatz = istNullsatz(taxRegime);
   const subtotal = round2(
     lines.reduce((sum, line) => sum + lineTotal(line), 0),
   );
@@ -50,7 +62,7 @@ export function computeTotals(
 
   const groups = new Map<number, TaxGroup>();
   for (const line of lines) {
-    const rate = Number(line.taxRate || 0);
+    const rate = nullsatz ? 0 : Number(line.taxRate || 0);
     const amount = lineTotal(line);
     const existing = groups.get(rate);
     if (existing) {
