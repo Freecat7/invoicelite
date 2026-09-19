@@ -10,16 +10,7 @@ import {
   today,
 } from '../format';
 import { PageHead } from '../components/Layout';
-import {
-  Alert,
-  EmptyState,
-  FormModal,
-  Select,
-  StatusBadge,
-  TextArea,
-  TextInput,
-  useConfirm,
-} from '../components/ui';
+import { Alert, BetragNettoBrutto, EmptyState, FormModal, Select, StatusBadge, TextArea, TextInput, useConfirm } from '../components/ui';
 
 export function RecurringExpensesPage({ settings }: { settings: Settings }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -226,22 +217,19 @@ export function RecurringExpensesPage({ settings }: { settings: Settings }) {
               onChange={(v) => patch({ category: v })}
             />
           </div>
-          <div className="grid-2">
-            <TextInput
-              label="Betrag (netto)"
-              type="number"
-              step="0.01"
-              value={editing.amount}
-              onChange={(v) => patch({ amount: Number(v) })}
-            />
-            <TextInput
-              label="USt.-Satz (%)"
-              type="number"
-              step="0.1"
-              value={editing.taxRate}
-              onChange={(v) => patch({ taxRate: Number(v) })}
-            />
-          </div>
+          <TextInput
+            label="USt.-Satz (%)"
+            type="number"
+            step="0.1"
+            value={editing.taxRate}
+            onChange={(v) => patch({ taxRate: Number(v) })}
+          />
+          <BetragNettoBrutto
+            netto={editing.amount}
+            steuersatz={editing.taxRate}
+            waehrung={editing.currency}
+            onNetto={(v) => patch({ amount: v })}
+          />
           <TextArea
             label="Beschreibung"
             value={editing.description}

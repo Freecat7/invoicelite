@@ -243,14 +243,18 @@ export function renderDocumentHtml(view: DocumentView): string {
   .company-head { text-align: right; font-size: 9pt; color: #55616f; white-space: pre-line; }
   .company-head strong { display: block; font-size: 11pt; color: #1c2430; margin-bottom: 2mm; }
 
-  .addresses { display: flex; justify-content: space-between; gap: 12mm; margin-top: 9mm; }
-  .address-field { width: 85mm; }
+  .addresses { display: flex; justify-content: space-between; gap: 8mm; margin-top: 9mm; }
+  .address-field { width: 80mm; }
   .recipient { white-space: pre-line; }
   .recipient .name { font-weight: 600; }
 
-  .meta { min-width: 62mm; }
+  /* Die Kopftabelle muss die breiteste Zeile tragen: "Leistungszeitraum"
+     mit einem Datumsbereich braucht rund 77mm. Vorher blieben nach
+     Adressfeld und Abstand nur 76,6mm - die Jahreszahl rechts wurde
+     dadurch am Rand abgeschnitten. */
+  .meta { min-width: 62mm; flex: 0 0 auto; }
   .meta table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
-  .meta th { text-align: left; font-weight: 500; color: #55616f; padding: 0.8mm 6mm 0.8mm 0; white-space: nowrap; }
+  .meta th { text-align: left; font-weight: 500; color: #55616f; padding: 0.8mm 4mm 0.8mm 0; white-space: nowrap; }
   .meta td { text-align: right; padding: 0.8mm 0; white-space: nowrap; }
 
   h1 { font-size: 16pt; margin: 6mm 0 1mm; letter-spacing: 0.3pt; }

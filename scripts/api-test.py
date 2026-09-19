@@ -702,6 +702,54 @@ s, b = call("POST", "/recurring-invoices", {
     "nextRunDate": "2026-03-01", "servicePeriod": "quatsch", "lines": zeile_lz})
 check("unbekannter Leistungszeitraum 400", s == 400, f"war {s}")
 
+# Ein hinterherhinkender Zaehler darf den Lauf nicht blockieren
+s, cfg_n = call("GET", "/settings")
+cfg_n = {k: v for k, v in cfg_n.items()
+         if k not in ("id", "logoPath", "smtpPasswordSet", "imapPasswordSet")}
+s, vorhanden = call("GET", "/invoices")
+stand_vorher = len(vorhanden)
+call("PUT", "/settings", {**cfg_n, "invoiceNumberNext": 1})
+zeile_n = [{"description": "Pauschale", "quantity": 1, "unitPrice": 10, "taxRate": 0}]
+vorlagen = []
+for i in range(3):
+    s, t = call("POST", "/recurring-invoices", {
+        "clientId": KUNDE, "title": f"Zaehlertest {i}", "frequency": "monthly",
+        "nextRunDate": "2026-09-01", "generateAs": "draft", "lines": zeile_n})
+    vorlagen.append(t["id"])
+s, lauf = call("POST", "/recurring-invoices/run")
+check("Lauf trotz belegter Nummer erfolgreich", s == 200, f"war {s}")
+check("alle drei Vorlagen erzeugt", lauf.get("invoicesCreated") == 3,
+      str(lauf.get("invoicesCreated")))
+check("keine Vorlage fehlgeschlagen", lauf.get("failed") == 0, str(lauf.get("failed")))
+s, nachher = call("GET", "/invoices")
+nummern = [i["number"] for i in nachher]
+check("keine doppelten Belegnummern", len(nummern) == len(set(nummern)),
+      f"{len(nummern)} Belege, {len(set(nummern))} verschiedene")
+check("drei Belege dazugekommen", len(nachher) == stand_vorher + 3,
+      f"{stand_vorher} -> {len(nachher)}")
+for vid in vorlagen:
+    call("PUT", f"/recurring-invoices/{vid}", {
+        "clientId": KUNDE, "title": "x", "frequency": "monthly",
+        "nextRunDate": "2099-01-01", "status": "paused", "lines": zeile_n})
+
+# Eine kaputte Vorlage darf die uebrigen nicht mitreissen
+s, leer = call("POST", "/recurring-invoices", {
+    "clientId": KUNDE, "title": "Ohne Positionen", "frequency": "monthly",
+    "nextRunDate": "2026-09-01", "generateAs": "draft", "lines": []})
+s, gut = call("POST", "/recurring-invoices", {
+    "clientId": KUNDE, "title": "Mit Positionen", "frequency": "monthly",
+    "nextRunDate": "2026-09-01", "generateAs": "draft", "lines": zeile_n})
+s, lauf2 = call("POST", "/recurring-invoices/run")
+check("Vorlage ohne Positionen blockiert den Lauf nicht",
+      lauf2.get("invoicesCreated") >= 1, str(lauf2.get("invoicesCreated")))
+check("uebersprungene Vorlage wird benannt",
+      any("Ohne Positionen" in d for d in lauf2.get("details", [])),
+      str(lauf2.get("details"))[:120])
+for vid in (leer["id"], gut["id"]):
+    call("PUT", f"/recurring-invoices/{vid}", {
+        "clientId": KUNDE, "title": "x", "frequency": "monthly",
+        "nextRunDate": "2099-01-01", "status": "paused", "lines": zeile_n})
+
 # ───────────────────────── Ausgaben ─────────────────────────
 head("Ausgaben")
 s, exp = call("POST", "/expenses", {

@@ -3,24 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useDebounced } from '../hooks';
 import { Expense, Settings } from '../types';
-import {
-  EXPENSE_STATUS_LABELS,
-  decimal,
-  formatDate,
-  money,
-  today,
-} from '../format';
+import { EXPENSE_STATUS_LABELS, formatDate, money, today } from '../format';
 import { PageHead } from '../components/Layout';
-import {
-  Alert,
-  EmptyState,
-  FormModal,
-  Select,
-  StatusBadge,
-  TextArea,
-  TextInput,
-  useConfirm,
-} from '../components/ui';
+import { Alert, BetragNettoBrutto, EmptyState, FormModal, Select, StatusBadge, TextArea, TextInput, useConfirm } from '../components/ui';
 
 export function ExpensesPage({ settings }: { settings: Settings }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -254,7 +239,6 @@ function ExpenseModal({
   onUploaded: () => void;
 }) {
   const [uploadError, setUploadError] = useState('');
-  const gross = expense.amount * (1 + expense.taxRate / 100);
 
   const upload = async (file: File) => {
     setUploadError('');
@@ -302,14 +286,7 @@ function ExpenseModal({
         </datalist>
       </div>
 
-      <div className="grid-3">
-        <TextInput
-          label="Betrag (netto)"
-          type="number"
-          step="0.01"
-          value={expense.amount}
-          onChange={(v) => onPatch({ amount: Number(v) })}
-        />
+      <div className="grid-2">
         <TextInput
           label="USt.-Satz (%)"
           type="number"
@@ -328,11 +305,12 @@ function ExpenseModal({
         />
       </div>
 
-      <div className="muted" style={{ marginBottom: 14 }}>
-        Brutto: <strong>{money(gross, expense.currency)}</strong> (USt.{' '}
-        {money(gross - expense.amount, expense.currency)} bei{' '}
-        {decimal(expense.taxRate, 0)} %)
-      </div>
+      <BetragNettoBrutto
+        netto={expense.amount}
+        steuersatz={expense.taxRate}
+        waehrung={expense.currency}
+        onNetto={(v) => onPatch({ amount: v })}
+      />
 
       <TextArea
         label="Beschreibung"

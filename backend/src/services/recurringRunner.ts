@@ -21,6 +21,8 @@ function endOfToday(): Date {
 export interface RunResult {
   invoicesCreated: number;
   expensesCreated: number;
+  /** Vorlagen, die uebersprungen werden mussten. */
+  failed: number;
   details: string[];
 }
 
@@ -31,92 +33,111 @@ async function runRecurringInvoices(result: RunResult): Promise<void> {
   });
 
   for (const template of due) {
-    if (template.lines.length === 0) continue;
+    if (template.lines.length === 0) {
+      result.details.push(
+        `Vorlage #${template.id} ("${template.title}") hat keine Positionen und wurde uebersprungen`,
+      );
+      continue;
+    }
 
-    const totals = computeTotals(
-      template.lines,
-      template.discountValue,
-      template.discountType,
-      template.taxRegime,
-    );
-    const issueDate = new Date(template.nextRunDate);
-    const dueDate = addTageUtc(issueDate, template.paymentTermDays);
-    // Der Zeitraum richtet sich nach dem Rechnungsdatum, nicht nach festen
-    // Werten an der Vorlage - sonst stuende jeden Monat derselbe da.
-    const zeitraum = leistungszeitraum(
-      template.servicePeriod,
-      issueDate,
-      addInterval(template.nextRunDate, template.frequency),
-    );
+    // Jede Vorlage fuer sich: scheitert eine, laufen die uebrigen weiter.
+    // Vorher riss ein einzelner Fehler den ganzen Lauf mit - im Ergebnis
+    // entstand keine einzige Rechnung, und die Meldung nannte nicht
+    // einmal, welche Vorlage betroffen war.
+    try {
 
-    // Nummer und Beleg in einer Transaktion, damit ein Fehlschlag keine
-    // Luecke im Nummernkreis hinterlaesst.
-    const number = await prisma.$transaction(async (tx) => {
-      const nummer = await nextNumberIn(tx, 'invoice');
-      await tx.invoice.create({
-      data: {
-        number: nummer,
-        clientId: template.clientId,
+      const totals = computeTotals(
+        template.lines,
+        template.discountValue,
+        template.discountType,
+        template.taxRegime,
+      );
+      const issueDate = new Date(template.nextRunDate);
+      const dueDate = addTageUtc(issueDate, template.paymentTermDays);
+      // Der Zeitraum richtet sich nach dem Rechnungsdatum, nicht nach festen
+      // Werten an der Vorlage - sonst stuende jeden Monat derselbe da.
+      const zeitraum = leistungszeitraum(
+        template.servicePeriod,
         issueDate,
-        dueDate,
-        // Vorlage bestimmt, ob der Beleg direkt freigegeben wird.
-        status: template.generateAs === 'approved' ? 'approved' : 'draft',
-        // Ohne diesen Zeitstempel wuerde der Mailversand die Rechnung nie
-        // aufgreifen - er nimmt nur, was vor heute freigegeben wurde.
-        approvedAt:
-          template.generateAs === 'approved' ? new Date() : null,
-        taxRegime: template.taxRegime,
-        ...(zeitraum
-          ? { serviceDateFrom: zeitraum.von, serviceDateTo: zeitraum.bis }
-          : {}),
-        currency: template.currency,
-        discountValue: template.discountValue,
-        discountType: template.discountType,
-        subtotal: totals.subtotal,
-        taxTotal: totals.taxTotal,
-        total: totals.total,
-        notes: template.notes,
-        terms: template.terms,
-        footer: template.footer,
-        recurringInvoiceId: template.id,
-        lines: {
-          create: totals.lines.map((line, idx) => ({
-            position: idx,
-            description: line.description,
-            quantity: line.quantity,
-            unit: line.unit,
-            unitPrice: line.unitPrice,
-            taxRate: line.taxRate,
-            lineTotal: line.lineTotal,
-          })),
+        addInterval(template.nextRunDate, template.frequency),
+      );
+
+      // Nummer und Beleg in einer Transaktion, damit ein Fehlschlag keine
+      // Luecke im Nummernkreis hinterlaesst.
+      const number = await prisma.$transaction(async (tx) => {
+        const nummer = await nextNumberIn(tx, 'invoice');
+        await tx.invoice.create({
+        data: {
+          number: nummer,
+          clientId: template.clientId,
+          issueDate,
+          dueDate,
+          // Vorlage bestimmt, ob der Beleg direkt freigegeben wird.
+          status: template.generateAs === 'approved' ? 'approved' : 'draft',
+          // Ohne diesen Zeitstempel wuerde der Mailversand die Rechnung nie
+          // aufgreifen - er nimmt nur, was vor heute freigegeben wurde.
+          approvedAt:
+            template.generateAs === 'approved' ? new Date() : null,
+          taxRegime: template.taxRegime,
+          ...(zeitraum
+            ? { serviceDateFrom: zeitraum.von, serviceDateTo: zeitraum.bis }
+            : {}),
+          currency: template.currency,
+          discountValue: template.discountValue,
+          discountType: template.discountType,
+          subtotal: totals.subtotal,
+          taxTotal: totals.taxTotal,
+          total: totals.total,
+          notes: template.notes,
+          terms: template.terms,
+          footer: template.footer,
+          recurringInvoiceId: template.id,
+          lines: {
+            create: totals.lines.map((line, idx) => ({
+              position: idx,
+              description: line.description,
+              quantity: line.quantity,
+              unit: line.unit,
+              unitPrice: line.unitPrice,
+              taxRate: line.taxRate,
+              lineTotal: line.lineTotal,
+            })),
+          },
         },
-      },
+        });
+        return nummer;
       });
-      return nummer;
-    });
 
-    const nextRunDate = addInterval(template.nextRunDate, template.frequency);
-    const remaining =
-      template.remainingCycles === null ? null : template.remainingCycles - 1;
-    const finished =
-      (remaining !== null && remaining <= 0) ||
-      (template.endDate !== null && nextRunDate > template.endDate);
+      const nextRunDate = addInterval(template.nextRunDate, template.frequency);
+      const remaining =
+        template.remainingCycles === null ? null : template.remainingCycles - 1;
+      const finished =
+        (remaining !== null && remaining <= 0) ||
+        (template.endDate !== null && nextRunDate > template.endDate);
 
-    await prisma.recurringInvoice.update({
-      where: { id: template.id },
-      data: {
-        nextRunDate,
-        remainingCycles: remaining,
-        lastRunAt: new Date(),
-        status: finished ? 'finished' : template.status,
-      },
-    });
+      await prisma.recurringInvoice.update({
+        where: { id: template.id },
+        data: {
+          nextRunDate,
+          remainingCycles: remaining,
+          lastRunAt: new Date(),
+          status: finished ? 'finished' : template.status,
+        },
+      });
 
-    result.invoicesCreated += 1;
-    result.details.push(
-      `Rechnung ${number} aus Vorlage #${template.id} erzeugt ` +
-        `(${template.generateAs === 'approved' ? 'freigegeben' : 'Entwurf'})`,
-    );
+      result.invoicesCreated += 1;
+      result.details.push(
+        `Rechnung ${number} aus Vorlage #${template.id} erzeugt ` +
+          `(${template.generateAs === 'approved' ? 'freigegeben' : 'Entwurf'})`,
+      );
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      result.failed += 1;
+      result.details.push(
+        `Vorlage #${template.id} ("${template.title}") fehlgeschlagen: ${text}`,
+      );
+      console.error(`[recurring] Vorlage #${template.id} fehlgeschlagen:`, text);
+    }
   }
 }
 
@@ -127,41 +148,55 @@ async function runRecurringExpenses(result: RunResult): Promise<void> {
 
   for (const template of due) {
     const taxAmount = round2((template.amount * template.taxRate) / 100);
-    await prisma.expense.create({
-      data: {
-        date: new Date(template.nextRunDate),
-        vendor: template.vendor,
-        category: template.category,
-        amount: template.amount,
-        taxRate: template.taxRate,
-        taxAmount,
-        total: round2(template.amount + taxAmount),
-        currency: template.currency,
-        description: template.description,
-        status: 'pending',
-        recurringExpenseId: template.id,
-      },
-    });
 
-    const nextRunDate = addInterval(template.nextRunDate, template.frequency);
-    const remaining =
-      template.remainingCycles === null ? null : template.remainingCycles - 1;
-    const finished =
-      (remaining !== null && remaining <= 0) ||
-      (template.endDate !== null && nextRunDate > template.endDate);
+    // Jede Vorlage fuer sich: scheitert eine, laufen die uebrigen weiter.
+    // Vorher riss ein einzelner Fehler den ganzen Lauf mit - im Ergebnis
+    // entstand keine einzige Ausgabe, und die Meldung nannte nicht
+    // einmal, welche Vorlage betroffen war.
+    try {
+      await prisma.expense.create({
+        data: {
+          date: new Date(template.nextRunDate),
+          vendor: template.vendor,
+          category: template.category,
+          amount: template.amount,
+          taxRate: template.taxRate,
+          taxAmount,
+          total: round2(template.amount + taxAmount),
+          currency: template.currency,
+          description: template.description,
+          status: 'pending',
+          recurringExpenseId: template.id,
+        },
+      });
 
-    await prisma.recurringExpense.update({
-      where: { id: template.id },
-      data: {
-        nextRunDate,
-        remainingCycles: remaining,
-        lastRunAt: new Date(),
-        status: finished ? 'finished' : template.status,
-      },
-    });
+      const nextRunDate = addInterval(template.nextRunDate, template.frequency);
+      const remaining =
+        template.remainingCycles === null ? null : template.remainingCycles - 1;
+      const finished =
+        (remaining !== null && remaining <= 0) ||
+        (template.endDate !== null && nextRunDate > template.endDate);
 
-    result.expensesCreated += 1;
-    result.details.push(`Ausgabe aus Vorlage #${template.id} erzeugt`);
+      await prisma.recurringExpense.update({
+        where: { id: template.id },
+        data: {
+          nextRunDate,
+          remainingCycles: remaining,
+          lastRunAt: new Date(),
+          status: finished ? 'finished' : template.status,
+        },
+      });
+
+      result.expensesCreated += 1;
+      result.details.push(`Ausgabe aus Vorlage #${template.id} erzeugt`);
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      result.failed += 1;
+      result.details.push(
+        `Vorlage #${template.id} ("${template.description}") fehlgeschlagen: ${text}`,
+      );
+      console.error(`[recurring] Vorlage #${template.id} fehlgeschlagen:`, text);
+    }
   }
 }
 
@@ -196,6 +231,7 @@ export async function runRecurring(): Promise<RunResult> {
   const result: RunResult = {
     invoicesCreated: 0,
     expensesCreated: 0,
+    failed: 0,
     details: [],
   };
   await runRecurringInvoices(result);

@@ -5,7 +5,7 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { EXPENSE_STATUS_LABELS, INVOICE_STATUS_LABELS, QUOTE_STATUS_LABELS, RECURRING_STATUS_LABELS, UNITS } from '../format';
+import { EXPENSE_STATUS_LABELS, INVOICE_STATUS_LABELS, QUOTE_STATUS_LABELS, RECURRING_STATUS_LABELS, UNITS, money } from '../format';
 
 /** Beschriftetes Formularfeld. */
 export function Field({
@@ -36,6 +36,8 @@ interface TextInputProps {
   required?: boolean;
   step?: string;
   min?: string;
+  disabled?: boolean;
+  onBlur?: () => void;
 }
 
 export function TextInput({
@@ -48,6 +50,8 @@ export function TextInput({
   required,
   step,
   min,
+  disabled,
+  onBlur,
 }: TextInputProps) {
   return (
     <Field label={label} hint={hint}>
@@ -58,6 +62,8 @@ export function TextInput({
         required={required}
         step={step}
         min={min}
+        disabled={disabled}
+        onBlur={onBlur}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
       />
     </Field>
@@ -388,5 +394,82 @@ export function UnitSelect({
       <label>{label}</label>
       {feld}
     </div>
+  );
+}
+
+
+/**
+ * Betrag wahlweise netto oder brutto eingeben.
+ *
+ * Gespeichert wird immer der Nettobetrag - so bleibt die Rechnung
+ * eindeutig, wenn sich der Steuersatz spaeter aendert. Wer eine Quittung
+ * abtippt, hat aber den Bruttobetrag vor sich. Deshalb stehen beide Felder
+ * nebeneinander und sind beide beschreibbar; das jeweils andere rechnet
+ * sich mit.
+ *
+ * Das Bruttofeld haelt seinen eigenen Text, solange es bearbeitet wird -
+ * sonst wuerde die Rueckrechnung dem Tippen ins Wort fallen ("119" wird
+ * nach der ersten Ziffer zu "0,84").
+ */
+export function BetragNettoBrutto({
+  netto,
+  steuersatz,
+  waehrung,
+  onNetto,
+  readOnly = false,
+}: {
+  netto: number;
+  steuersatz: number;
+  waehrung: string;
+  onNetto: (wert: number) => void;
+  readOnly?: boolean;
+}) {
+  const faktor = 1 + (Number(steuersatz) || 0) / 100;
+  const bruttoAus = (n: number) => Math.round(n * faktor * 100) / 100;
+
+  const [bruttoText, setBruttoText] = useState('');
+  const [tippt, setTippt] = useState(false);
+
+  // Solange nicht im Bruttofeld getippt wird, folgt es dem Nettobetrag.
+  useEffect(() => {
+    if (!tippt) setBruttoText(String(bruttoAus(Number(netto) || 0)));
+  }, [netto, steuersatz, tippt]);
+
+  const steuer = bruttoAus(Number(netto) || 0) - (Number(netto) || 0);
+
+  return (
+    <>
+      <div className="grid-2">
+        <TextInput
+          label="Betrag netto"
+          type="number"
+          step="0.01"
+          value={netto}
+          disabled={readOnly}
+          onChange={(v) => onNetto(Number(v))}
+        />
+        <TextInput
+          label="Betrag brutto"
+          type="number"
+          step="0.01"
+          value={bruttoText}
+          disabled={readOnly}
+          hint="Beide Felder sind beschreibbar – das andere rechnet sich mit."
+          onChange={(v) => {
+            setTippt(true);
+            setBruttoText(v);
+            const brutto = Number(v);
+            if (Number.isFinite(brutto) && faktor > 0) {
+              onNetto(Math.round((brutto / faktor) * 100) / 100);
+            }
+          }}
+          onBlur={() => setTippt(false)}
+        />
+      </div>
+      <div className="muted" style={{ margin: '-6px 0 14px' }}>
+        Enthaltene USt. bei {steuersatz || 0} %:{' '}
+        <strong>{money(steuer, waehrung)}</strong>
+      </div>
+    </>
   );
 }
