@@ -461,7 +461,30 @@ Das Volume auf `/data` ist wichtig – ohne es sind nach einem `docker rm` alle 
 Die App vertraut `X-Forwarded-*`-Headern. Bei HTTPS-Terminierung im Proxy wird das
 Sitzungs-Cookie automatisch als `secure` gesetzt.
 
+## Ausgaben: netto oder brutto eingeben
+
+Gespeichert wird immer der **Nettobetrag** – so bleibt die Rechnung eindeutig, wenn sich der
+Steuersatz später ändert. Auf einer Quittung steht aber der Bruttobetrag. Deshalb sind beide
+Felder nebeneinander sichtbar und **beide beschreibbar**: Wer brutto eintippt, bekommt netto
+zurückgerechnet, und umgekehrt. Darunter steht die enthaltene Umsatzsteuer.
+
+Gilt für einzelne wie für wiederkehrende Ausgaben.
+
 ## Wiederkehrende Belege
+
+### Wann eine Vorlage auf „beendet" springt
+
+Nur wenn eine Grenze erreicht ist – sonst bleibt sie dauerhaft aktiv:
+
+| | |
+| --- | --- |
+| ohne Enddatum und ohne Durchläufe | bleibt **aktiv** |
+| Durchläufe auf 1 gesetzt | nach dem ersten Lauf **beendet** |
+| Durchläufe auf 3 gesetzt | nach drei Läufen beendet |
+| Enddatum erreicht | nach dem Lauf an diesem Tag **beendet** |
+
+Das Enddatum zählt einschließlich: Steht dort der 01.09., wird an diesem Tag noch erzeugt und
+die Vorlage danach beendet.
 
 ### Leistungszeitraum
 
