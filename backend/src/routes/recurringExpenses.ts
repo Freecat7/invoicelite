@@ -5,6 +5,7 @@ import { FREQUENCIES, RECURRING_STATUSES } from '../constants';
 import {
   HttpError,
   asyncHandler,
+  cyclesSchema,
   dateSchema,
   parseBody,
   parseId,
@@ -22,10 +23,7 @@ const recurringExpenseSchema = z.object({
   frequency: z.enum(FREQUENCIES).default('monthly'),
   nextRunDate: dateSchema,
   endDate: dateSchema,
-  remainingCycles: z
-    .union([z.coerce.number().int().min(0), z.null()])
-    .optional()
-    .transform((v) => (v === undefined ? null : v)),
+  remainingCycles: cyclesSchema,
   status: z.enum(RECURRING_STATUSES).default('active'),
 });
 

@@ -591,6 +591,28 @@ check("zuletzt erzeugte Rechnung ist Entwurf", neueste["status"] == "draft", neu
 check("Liste liefert die neueste zuerst", b["generatedInvoices"][0]["id"] == neueste["id"],
       f"erste war #{b['generatedInvoices'][0]['id']}, neueste #{neueste['id']}")
 
+# Eine beendete Vorlage laesst sich wieder aktivieren, indem man den Status
+# zurueckstellt und das Feld "Durchlaeufe" leert. Leer heisst unbegrenzt und
+# darf nicht als 0 gespeichert werden, sonst endet die Vorlage sofort wieder.
+s, b = call("PUT", f"/recurring-invoices/{TPL}", {
+    "clientId": KUNDE, "title": "Wartung", "frequency": "monthly",
+    "nextRunDate": iso(TODAY - timedelta(days=1)), "generateAs": "draft",
+    "status": "active", "remainingCycles": None,
+    "lines": [{"description": "Pauschale", "quantity": 1, "unitPrice": 180, "taxRate": 19}],
+})
+check("geleerte Durchlaeufe bleiben unbegrenzt", b["remainingCycles"] is None,
+      repr(b["remainingCycles"]))
+call("POST", "/recurring-invoices/run")
+s, b = call("GET", f"/recurring-invoices/{TPL}")
+check("reaktivierte Vorlage laeuft weiter", b["status"] == "active",
+      f"{b['status']}, Durchlaeufe {b['remainingCycles']}")
+
+s, b = call("PUT", f"/recurring-invoices/{TPL}", {
+    "clientId": KUNDE, "frequency": "monthly", "remainingCycles": "drei",
+    "lines": [{"description": "Pauschale", "quantity": 1, "unitPrice": 180}],
+})
+check("unsinnige Durchlaeufe 400", s == 400, f"war {s}")
+
 s, b = call("POST", "/recurring-invoices", {"clientId": KUNDE, "generateAs": "sent", "lines": []})
 check("ungueltiges generateAs 400", s == 400, f"war {s}")
 

@@ -12,6 +12,7 @@ import { runRecurring } from '../services/recurringRunner';
 import {
   HttpError,
   asyncHandler,
+  cyclesSchema,
   dateSchema,
   lineSchema,
   parseBody,
@@ -26,10 +27,7 @@ const recurringSchema = z.object({
   frequency: z.enum(FREQUENCIES).default('monthly'),
   nextRunDate: dateSchema,
   endDate: dateSchema,
-  remainingCycles: z
-    .union([z.coerce.number().int().min(0), z.null()])
-    .optional()
-    .transform((v) => (v === undefined ? null : v)),
+  remainingCycles: cyclesSchema,
   status: z.enum(RECURRING_STATUSES).default('active'),
   currency: z.string().default('EUR'),
   discountValue: z.coerce.number().min(0).default(0),

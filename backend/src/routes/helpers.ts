@@ -52,6 +52,27 @@ export const dateSchema = z
     return Number.isNaN(date.getTime()) ? null : date;
   });
 
+/**
+ * Restliche Durchlaeufe einer Wiederholung; leer bedeutet "unbegrenzt".
+ * z.coerce.number() wuerde null und '' still zu 0 machen, daher pruefen wir
+ * leere Werte vor der Umwandlung.
+ */
+export const cyclesSchema = z
+  .union([z.string(), z.number(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined || value === null || value === '') return null;
+    const zahl = Number(value);
+    if (!Number.isInteger(zahl) || zahl < 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Bitte eine ganze Zahl ab 0 angeben',
+      });
+      return z.NEVER;
+    }
+    return zahl;
+  });
+
 export const lineSchema = z.object({
   description: z.string().default(''),
   quantity: z.coerce.number().default(1),
