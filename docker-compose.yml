@@ -1,4 +1,4 @@
-# invoicelite – ein Container, eine Datei, fertig.
+# invoicelite: ein Container, eine Datei, fertig.
 #
 #   docker compose up -d
 #
@@ -7,11 +7,17 @@
 
 services:
   invoicelite:
-    # Wird beim ersten Start aus dem Quelltext gebaut. Das dauert einige
-    # Minuten, spart aber eine Registry - und der laufende Stand entspricht
-    # genau dem geklonten.
-    build: .
-    image: invoicelite:latest
+    # Fertiges Abbild aus der GitHub Container Registry, kein Bauen nötig.
+    #
+    # Standardmäßig die neueste Fassung. Eine Version festnageln geht ohne
+    # Änderung an dieser Datei, über eine .env-Datei daneben:
+    #
+    #   INVOICELITE_VERSION=1.0.0
+    #
+    # Das empfiehlt sich im Produktivbetrieb, weil der Container beim Start
+    # ausstehende Datenbankmigrationen selbst anwendet. Was eine neue Version
+    # am Schema oder an der Steuerlogik ändert, steht im CHANGELOG.
+    image: ghcr.io/freecat7/invoicelite:${INVOICELITE_VERSION:-latest}
     container_name: invoicelite
     restart: unless-stopped
     ports:
@@ -21,7 +27,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       # Leer lassen: dann wird ein Zufallspasswort erzeugt und einmalig ins
       # Log geschrieben. Das ist sicherer, als eines in dieser Datei zu
-      # hinterlegen - sie landet sonst in der Versionsverwaltung.
+      # hinterlegen, denn sie landet sonst in der Versionsverwaltung.
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # Zeitzone für den nächtlichen Lauf und den Mailversand
       TZ: ${TZ:-Europe/Berlin}

@@ -33,16 +33,34 @@ Was "hält sich an deutsches Recht" konkret heißt:
 
 ## Schnellstart
 
+Eine Datei genügt. Das Abbild kommt fertig aus der Registry, es wird nichts gebaut:
+
 ```bash
-git clone https://github.com/Freecat7/invoicelite.git
-cd invoicelite
-docker compose up -d --build            # baut beim ersten Mal, dauert ein paar Minuten
+curl -O https://raw.githubusercontent.com/Freecat7/invoicelite/main/docker-compose.yml
+docker compose up -d
 docker compose logs | grep Passwort     # Startpasswort ablesen
 ```
 
 Dann [http://localhost:8080](http://localhost:8080) öffnen. Ein Assistent führt in fünf
 Schritten durch Firma, Steuer, Bank, Belege und Zugang. Niemand muss die Einstellungen
 vorher selbst durchsuchen.
+
+Aktualisieren geht mit `docker compose pull && docker compose up -d`. Weil der Container
+beim Start ausstehende Datenbankmigrationen anwendet, lohnt vorher ein Blick in den
+[CHANGELOG](CHANGELOG.md) und eine Sicherung über die Einstellungen. Wer auf einer
+bestimmten Version bleiben will, legt eine `.env` daneben:
+
+```
+INVOICELITE_VERSION=1.0.0
+```
+
+Aus dem Quelltext bauen, etwa zum Entwickeln:
+
+```bash
+git clone https://github.com/Freecat7/invoicelite.git
+cd invoicelite
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 > Für den Betrieb über das Internet gehört ein Reverse Proxy mit TLS davor. Die Anwendung
 > selbst spricht HTTP. Siehe [SECURITY.md](SECURITY.md).

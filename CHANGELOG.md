@@ -9,6 +9,13 @@ Upgrade lohnt sich eine Sicherung über die Einstellungen, denn eine angewendete
 lässt sich nur durch Einspielen dieser Sicherung zurücknehmen. Jeder Eintrag unten nennt,
 ob das Schema oder die Steuerlogik betroffen ist.
 
+## Unveröffentlicht
+
+- Die Compose-Datei zieht jetzt das fertige Abbild statt es zu bauen. Für den Betrieb aus
+  dem Quelltext liegt `docker-compose.build.yml` daneben. Wer bisher mit `build: .` lief,
+  bekommt beim nächsten `docker compose up -d` das Abbild aus der Registry; das Volume und
+  damit alle Daten bleiben unberührt.
+
 ## 1.0.0 (2026-10-22)
 
 Erste Version mit veröffentlichtem Container-Abbild. Schema unverändert.
