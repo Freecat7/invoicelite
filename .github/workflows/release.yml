@@ -2,9 +2,15 @@ name: Release
 
 # Laeuft, wenn ein Tag wie v1.0.0 geschoben wird. Das Abbild wird erst
 # veroeffentlicht, nachdem die Testreihe dagegen durchgelaufen ist.
+#
+# Achtung: GitHub erzeugt kein Event, wenn mehr als drei Tags in einem
+# Push angelegt werden. Tags also einzeln schieben. Geht doch einmal ein
+# Lauf verloren, laesst er sich unter Actions ueber "Run workflow" auf dem
+# jeweiligen Tag nachholen.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write   # fuer "gh release create"
