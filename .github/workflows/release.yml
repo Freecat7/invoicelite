@@ -1,11 +1,11 @@
 name: Release
 
-# Laeuft, wenn ein Tag wie v1.0.0 geschoben wird. Das Abbild wird erst
-# veroeffentlicht, nachdem die Testreihe dagegen durchgelaufen ist.
+# Läuft, wenn ein Tag wie v1.0.0 geschoben wird. Das Abbild wird erst
+# veröffentlicht, nachdem die Testreihe dagegen durchgelaufen ist.
 #
 # Achtung: GitHub erzeugt kein Event, wenn mehr als drei Tags in einem
 # Push angelegt werden. Tags also einzeln schieben. Geht doch einmal ein
-# Lauf verloren, laesst er sich unter Actions ueber "Run workflow" auf dem
+# Lauf verloren, lässt er sich unter Actions über "Run workflow" auf dem
 # jeweiligen Tag nachholen.
 on:
   push:
@@ -13,11 +13,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # fuer "gh release create"
-  packages: write   # fuer den Push nach ghcr.io
+  contents: write   # für "gh release create"
+  packages: write   # für den Push nach ghcr.io
 
 jobs:
-  veroeffentlichen:
+  release:
     name: Abbild bauen, prüfen und veröffentlichen
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +67,7 @@ jobs:
           abbild="${{ steps.namen.outputs.abbild }}"
           version="${{ steps.namen.outputs.version }}"
           docker push "$abbild:$version"
-          # "latest" nur fuer fertige Versionen, nicht fuer 1.0.0-rc1 und aehnliches.
+          # "latest" nur für fertige Versionen, nicht für 1.0.0-rc1 und ähnliches.
           case "$version" in
             *-*) echo "Vorabversion, latest bleibt unberührt" ;;
             *)   docker tag "$abbild:$version" "$abbild:latest"

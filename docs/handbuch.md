@@ -426,16 +426,85 @@ Vor der Erzeugung wird geprüft, ob Firmenanschrift, USt-IdNr./Steuernummer und
 Kundenanschrift vollständig sind; fehlt etwas, nennt die Fehlermeldung konkret die Lücke.
 Negative Gesamtbeträge sind nicht zulässig – Gutschriften gehören als eigener Beleg erfasst.
 
+## Betrieb mit Compose
+
+Die Compose-Datei enthält bewusst keine Kommentare. Was sie tut, steht hier.
+
+```bash
+curl -O https://raw.githubusercontent.com/Freecat7/invoicelite/main/docker-compose.yml
+docker compose up -d
+```
+
+Ein Klon ist nicht nötig. Das Abbild kommt fertig aus der GitHub Container Registry, es
+wird nichts gebaut. Zum ersten Start und zum erzeugten Passwort siehe
+[Einrichtung beim ersten Start](#einrichtung-beim-ersten-start), zu den Variablen
+[Umgebungsvariablen](#umgebungsvariablen).
+
+### Eigene Werte hinterlegen
+
+Compose liest eine `.env` neben der Compose-Datei automatisch. Dort gehören Zeitzone und
+Zugangsdaten hin, nicht in die Compose-Datei selbst, weil die in der Versionsverwaltung
+landet:
+
+```
+TZ=Europe/Berlin
+ADMIN_EMAIL=ich@example.com
+```
+
+Bleibt `ADMIN_PASSWORD` leer, erzeugt die Anwendung beim ersten Start ein Zufallspasswort
+und schreibt es einmalig ins Log. Das ist sicherer als ein Passwort in einer Datei.
+
+### Eine Version festnageln
+
+Ohne Angabe läuft `latest`. Im Produktivbetrieb empfiehlt sich eine feste Version, denn
+der Container wendet beim Start ausstehende Datenbankmigrationen selbst an. In die `.env`:
+
+```
+INVOICELITE_VERSION=1.0.0
+```
+
+### Aktualisieren
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Vorher lohnt ein Blick in den [CHANGELOG](../CHANGELOG.md): dort steht je Version, ob sich
+am Datenbankschema oder an der Steuerlogik etwas ändert. Eine angewendete Migration nimmt
+man nicht zurück, sondern nur durch Einspielen einer Sicherung, siehe
+[Sicherung](#sicherung). Das Volume bleibt bei einem Upgrade unberührt, auch beim Wechsel
+von einer selbst gebauten Fassung auf das Abbild aus der Registry.
+
+### Zustand prüfen
+
+Die Compose-Datei bringt einen Healthcheck mit, der alle 30 Sekunden `/api/health`
+abfragt, mit 20 Sekunden Anlauf nach dem Start. `docker ps` zeigt das Ergebnis als
+`healthy` oder `unhealthy`.
+
+### Aus dem Quelltext bauen
+
+Für Entwicklung oder wenn genau der geklonte Stand laufen soll, liegt eine zweite Datei
+daneben:
+
+```bash
+git clone https://github.com/Freecat7/invoicelite.git
+cd invoicelite
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+Das dauert einige Minuten, weil Frontend, Backend und Chromium mit hineingehen. Das Abbild
+heißt dann `invoicelite:selbstgebaut` und wird nicht aus der Registry gezogen.
+
 ## Betrieb ohne Compose
 
 Wer kein Compose nutzen will, startet den Container von Hand:
 
 ```bash
-docker build -t invoicelite .
 docker run -d --name invoicelite --restart unless-stopped \
   -p 8080:3000 -v invoicelite-data:/data \
   -e ADMIN_EMAIL=ich@example.com -e TZ=Europe/Berlin \
-  invoicelite
+  ghcr.io/freecat7/invoicelite:latest
 ```
 
 Ohne `ADMIN_PASSWORD` erzeugt die Anwendung beim ersten Start ein Zufallspasswort und

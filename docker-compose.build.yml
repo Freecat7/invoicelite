@@ -1,12 +1,3 @@
-# Aus dem Quelltext bauen statt das fertige Abbild zu ziehen. Für
-# Entwicklung und für jeden, der genau den geklonten Stand laufen lassen
-# will:
-#
-#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-#
-# Das Bauen dauert einige Minuten, weil Frontend, Backend und Chromium
-# mit hineingehen.
-
 services:
   invoicelite:
     build: .

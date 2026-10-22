@@ -45,7 +45,7 @@ jobs:
             -e ADMIN_PASSWORD=test-passwort-123 \
             -e TZ=Europe/Berlin \
             invoicelite:ci
-          # Warten, bis die Anwendung antwortet - ein festes sleep waere
+          # Warten, bis die Anwendung antwortet: ein festes sleep wäre
           # entweder zu kurz oder verschenkte Zeit.
           for i in $(seq 1 60); do
             curl -sf -o /dev/null http://localhost:8099/api/health && exit 0
