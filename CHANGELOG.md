@@ -9,7 +9,7 @@ Upgrade lohnt sich eine Sicherung über die Einstellungen, denn eine angewendete
 lässt sich nur durch Einspielen dieser Sicherung zurücknehmen. Jeder Eintrag unten nennt,
 ob das Schema oder die Steuerlogik betroffen ist.
 
-## Unveröffentlicht
+## 2.0.0 (2026-10-24)
 
 Schema geändert: diese Version entfernt Spalten. Vorher sichern.
 
