@@ -162,7 +162,7 @@ export function SetupPage({
     <div className="setup-wrap">
       <div className="setup-card">
         <div className="setup-head">
-          <div className="setup-brand">{settings.appName || 'invoicelite'}</div>
+          <div className="setup-brand">invoicelite</div>
           <div className="setup-fortschritt">
             {SCHRITTE.map((s, i) => (
               <span

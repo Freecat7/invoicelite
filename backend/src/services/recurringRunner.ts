@@ -26,6 +26,46 @@ export interface RunResult {
   details: string[];
 }
 
+/**
+ * Bestimmt Zählerstand und Status einer Vorlage nach einem Lauf.
+ *
+ * Der Zähler geht nie unter null. Ist er aufgebraucht, wird er geleert und
+ * die Vorlage beendet: eine 0 im Feld hätte beim Reaktivieren sofort wieder
+ * zum Ende geführt, so genügt künftig das Umstellen des Status. Endet die
+ * Vorlage dagegen am Enddatum, bleibt ein noch vorhandener Zähler stehen.
+ */
+function standNachLauf(
+  template: {
+    remainingCycles: number | null;
+    endDate: Date | null;
+    status: string;
+  },
+  nextRunDate: Date,
+): { remainingCycles: number | null; status: string } {
+  const verbleibend =
+    template.remainingCycles === null
+      ? null
+      : Math.max(0, template.remainingCycles - 1);
+  const aufgebraucht = verbleibend !== null && verbleibend <= 0;
+  const ueberEnde =
+    template.endDate !== null && nextRunDate > template.endDate;
+
+  return {
+    remainingCycles: aufgebraucht ? null : verbleibend,
+    status: aufgebraucht || ueberEnde ? 'finished' : template.status,
+  };
+}
+
+/**
+ * Eine Vorlage, deren Zähler bereits bei null steht, darf nichts mehr
+ * erzeugen. Solche Werte stammen aus der Zeit, in der ein geleertes Feld
+ * still als 0 gespeichert wurde; die Migration raeumt sie auf, diese
+ * Pruefung fängt den Rest ab.
+ */
+function zaehlerAufgebraucht(template: { remainingCycles: number | null }): boolean {
+  return template.remainingCycles !== null && template.remainingCycles <= 0;
+}
+
 async function runRecurringInvoices(result: RunResult): Promise<void> {
   const due = await prisma.recurringInvoice.findMany({
     where: { status: 'active', nextRunDate: { lte: endOfToday() } },
@@ -36,6 +76,17 @@ async function runRecurringInvoices(result: RunResult): Promise<void> {
     if (template.lines.length === 0) {
       result.details.push(
         `Vorlage #${template.id} ("${template.title}") hat keine Positionen und wurde uebersprungen`,
+      );
+      continue;
+    }
+
+    if (zaehlerAufgebraucht(template)) {
+      await prisma.recurringInvoice.update({
+        where: { id: template.id },
+        data: { remainingCycles: null, status: 'finished' },
+      });
+      result.details.push(
+        `Vorlage #${template.id} ("${template.title}") hatte keine Durchläufe mehr und wurde beendet`,
       );
       continue;
     }
@@ -109,19 +160,15 @@ async function runRecurringInvoices(result: RunResult): Promise<void> {
       });
 
       const nextRunDate = addInterval(template.nextRunDate, template.frequency);
-      const remaining =
-        template.remainingCycles === null ? null : template.remainingCycles - 1;
-      const finished =
-        (remaining !== null && remaining <= 0) ||
-        (template.endDate !== null && nextRunDate > template.endDate);
+      const stand = standNachLauf(template, nextRunDate);
 
       await prisma.recurringInvoice.update({
         where: { id: template.id },
         data: {
           nextRunDate,
-          remainingCycles: remaining,
+          remainingCycles: stand.remainingCycles,
           lastRunAt: new Date(),
-          status: finished ? 'finished' : template.status,
+          status: stand.status,
         },
       });
 
@@ -147,6 +194,17 @@ async function runRecurringExpenses(result: RunResult): Promise<void> {
   });
 
   for (const template of due) {
+    if (zaehlerAufgebraucht(template)) {
+      await prisma.recurringExpense.update({
+        where: { id: template.id },
+        data: { remainingCycles: null, status: 'finished' },
+      });
+      result.details.push(
+        `Ausgabenvorlage #${template.id} hatte keine Durchläufe mehr und wurde beendet`,
+      );
+      continue;
+    }
+
     const taxAmount = round2((template.amount * template.taxRate) / 100);
 
     // Jede Vorlage fuer sich: scheitert eine, laufen die uebrigen weiter.
@@ -171,19 +229,15 @@ async function runRecurringExpenses(result: RunResult): Promise<void> {
       });
 
       const nextRunDate = addInterval(template.nextRunDate, template.frequency);
-      const remaining =
-        template.remainingCycles === null ? null : template.remainingCycles - 1;
-      const finished =
-        (remaining !== null && remaining <= 0) ||
-        (template.endDate !== null && nextRunDate > template.endDate);
+      const stand = standNachLauf(template, nextRunDate);
 
       await prisma.recurringExpense.update({
         where: { id: template.id },
         data: {
           nextRunDate,
-          remainingCycles: remaining,
+          remainingCycles: stand.remainingCycles,
           lastRunAt: new Date(),
-          status: finished ? 'finished' : template.status,
+          status: stand.status,
         },
       });
 

@@ -110,11 +110,10 @@ setupRouter.post(
       }
     }
 
-    const { smtpPasswordEnc, imapPasswordEnc, ...rest } = updated;
+    const { smtpPasswordEnc, ...rest } = updated;
     res.json({
       ...rest,
       smtpPasswordSet: !!smtpPasswordEnc,
-      imapPasswordSet: !!imapPasswordEnc,
     });
   }),
 );

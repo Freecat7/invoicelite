@@ -5,7 +5,6 @@ import { entschluesseln } from './secrets';
 import { generateInvoicePdf } from './pdf';
 import { generateXRechnung, generateZugferdPdf } from './eInvoice';
 import { generateQuotePdf } from './pdf';
-import { legeInGesendetAb } from './sentFolder';
 
 /**
  * Mailversand ueber das hinterlegte Postfach.
@@ -298,20 +297,6 @@ async function versendeUndLegeAb(
     throw alsKlartext(err);
   } finally {
     transport.close();
-  }
-
-  const s = await getSettings();
-  if (s.imapCopyEnabled) {
-    try {
-      await legeInGesendetAb(roh);
-    } catch (err) {
-      // Die Mail ist beim Kunden - nur die Ablage fehlt. Das darf den
-      // Versand nicht zurueckdrehen.
-      console.warn(
-        '[mail] Kopie im Ordner "Gesendet" fehlgeschlagen:',
-        err instanceof Error ? err.message : err,
-      );
-    }
   }
 }
 

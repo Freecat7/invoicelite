@@ -252,7 +252,7 @@ export function RecurringInvoiceEditorPage({ settings }: { settings: Settings })
             <TextInput
               label="Verbleibende Durchläufe (optional)"
               type="number"
-              min="0"
+              min="1"
               value={form.remainingCycles}
               hint="Leer lassen für unbegrenzt"
               onChange={(v) => patch({ remainingCycles: v })}

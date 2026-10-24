@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { config } from './config';
-import { getSettings, initDatabase, prisma } from './db';
+import { initDatabase, prisma } from './db';
 import { requireAuth } from './middleware/auth';
 import { HttpError } from './routes/helpers';
 import { authRouter, ensureAdminUser } from './routes/auth';
@@ -36,17 +36,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-
-// Der Name wird schon auf der Anmeldeseite gebraucht, also vor jeder
-// Sitzung. Bewusst nur dieses eine Feld - alles Weitere bleibt geschuetzt.
-app.get('/api/branding', async (_req, res) => {
-  try {
-    const s = await getSettings();
-    res.json({ appName: s.appName || 'invoicelite' });
-  } catch {
-    res.json({ appName: 'invoicelite' });
-  }
-});
 
 // Anmeldung liegt vor der Auth-Pruefung.
 app.use('/api/auth', authRouter);

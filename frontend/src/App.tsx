@@ -159,7 +159,7 @@ export default function App() {
   }
 
   return (
-    <Layout user={user} onLogout={handleLogout} appName={settings.appName}>
+    <Layout user={user} onLogout={handleLogout}>
       <Suspense fallback={<div className="muted">Lädt…</div>}>
         <Routes>
         <Route path="/" element={<DashboardPage />} />

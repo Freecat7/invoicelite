@@ -27,7 +27,6 @@ const settingsSchema = z.object({
   taxNumber: z.string().default(''),
   ownerName: z.string().default(''),
   setupCompleted: z.coerce.boolean().optional(),
-  appName: z.string().trim().max(40).default('invoicelite'),
   uiAccentColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, 'Bitte einen Hex-Wert wie #2f6f4f angeben')
@@ -100,14 +99,6 @@ const settingsSchema = z.object({
   quoteMailBody: z.string().default(''),
   quoteMailBodyHtml: z.string().default(''),
 
-  // Kopie im Ordner "Gesendet"
-  imapCopyEnabled: z.coerce.boolean().default(false),
-  imapHost: z.string().default(''),
-  imapPort: z.coerce.number().int().min(1).max(65535).default(993),
-  imapSecure: z.coerce.boolean().default(true),
-  imapUser: z.string().default(''),
-  imapPassword: z.string().optional(),
-  imapSentFolder: z.string().default(''),
 });
 
 settingsRouter.get(
@@ -121,30 +112,12 @@ settingsRouter.get(
  * Das verschluesselte Passwort verlaesst den Server nie. Stattdessen sagt
  * ein Merker, ob eines hinterlegt ist - mehr braucht die Oberflaeche nicht.
  */
-function ohnePasswort<
-  T extends { smtpPasswordEnc: string; imapPasswordEnc: string },
->(settings: T) {
-  const { smtpPasswordEnc, imapPasswordEnc, ...rest } = settings;
-  return {
-    ...rest,
-    smtpPasswordSet: !!smtpPasswordEnc,
-    imapPasswordSet: !!imapPasswordEnc,
-  };
+function ohnePasswort<T extends { smtpPasswordEnc: string }>(settings: T) {
+  const { smtpPasswordEnc, ...rest } = settings;
+  return { ...rest, smtpPasswordSet: !!smtpPasswordEnc };
 }
 
 /** Entfernt die hinterlegten Zugangsdaten. */
-settingsRouter.delete(
-  '/imap-password',
-  asyncHandler(async (_req, res) => {
-    await getSettings();
-    const updated = await prisma.companySettings.update({
-      where: { id: 1 },
-      data: { imapPasswordEnc: '' },
-    });
-    res.json(ohnePasswort(updated));
-  }),
-);
-
 settingsRouter.delete(
   '/smtp-password',
   asyncHandler(async (_req, res) => {
@@ -160,10 +133,7 @@ settingsRouter.delete(
 settingsRouter.put(
   '/',
   asyncHandler(async (req, res) => {
-    const { smtpPassword, imapPassword, ...data } = parseBody(
-      settingsSchema,
-      req.body,
-    );
+    const { smtpPassword, ...data } = parseBody(settingsSchema, req.body);
     await getSettings();
 
     // Passwort nur anfassen, wenn eines mitgeschickt wurde. Ein leeres Feld
@@ -176,9 +146,6 @@ settingsRouter.put(
         ...data,
         ...(smtpPassword
           ? { smtpPasswordEnc: verschluesseln(smtpPassword) }
-          : {}),
-        ...(imapPassword
-          ? { imapPasswordEnc: verschluesseln(imapPassword) }
           : {}),
       },
     });

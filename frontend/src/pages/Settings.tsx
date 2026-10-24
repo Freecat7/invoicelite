@@ -125,12 +125,6 @@ export function SettingsPage({
                 onChange={(v) => patch({ companyName: v })}
               />
               <TextInput
-                label="Name der Anwendung"
-                value={form.appName}
-                hint="Steht in der Seitenleiste und auf der Anmeldeseite. Ändert nichts an den Belegen."
-                onChange={(v) => patch({ appName: v })}
-              />
-              <TextInput
                 label="Straße und Hausnummer"
                 value={form.addressLine}
                 onChange={(v) => patch({ addressLine: v })}
@@ -573,12 +567,6 @@ function ApiTokensSection() {
     <div>
       {error && <Alert kind="error">{error}</Alert>}
 
-      <Alert kind="info">
-        Mit einem API-Token können Sie Rechnungen und Kundendaten von außen
-        abrufen – etwa für ein eigenes Skript zum Mailversand. Der Token wird im
-        Header <code>Authorization: Bearer …</code> mitgeschickt.
-      </Alert>
-
       {freshToken && (
         <div>
           <Alert kind="success">
@@ -755,7 +743,6 @@ function MailSection({
   patch: (changes: Partial<Settings>) => void;
 }) {
   const [passwort, setPasswort] = useState('');
-  const [imapPasswort, setImapPasswort] = useState('');
   const [testAdresse, setTestAdresse] = useState('');
   const [meldung, setMeldung] = useState('');
   const [fehler, setFehler] = useState('');
@@ -786,20 +773,6 @@ function MailSection({
       setMeldung(`Testmail an ${testAdresse} verschickt.`);
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'Versand fehlgeschlagen');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const pruefeOrdner = async () => {
-    setBusy(true);
-    setFehler('');
-    setMeldung('');
-    try {
-      const r = await api.post<{ ordner: string }>('/mail/test-sent-folder', {});
-      setMeldung(`Ordner gefunden: „${r.ordner}“.`);
-    } catch (err) {
-      setFehler(err instanceof Error ? err.message : 'Prüfung fehlgeschlagen');
     } finally {
       setBusy(false);
     }
@@ -984,77 +957,6 @@ function MailSection({
         onChange={(v) => patch({ quoteMailBody: v })}
       />
 
-      <div className="section-title">Kopie im Ordner „Gesendet“</div>
-      <Alert kind="info">
-        SMTP stellt nur zu – eine Kopie im eigenen Postfach entsteht dabei nicht.
-        Wird das hier eingeschaltet, legt invoicelite jede verschickte Nachricht
-        zusätzlich per IMAP im Ordner „Gesendet“ ab.
-      </Alert>
-      <div className="grid-3">
-        <Select
-          label="Kopie ablegen"
-          value={form.imapCopyEnabled ? 'an' : 'aus'}
-          onChange={(v) => patch({ imapCopyEnabled: v === 'an' })}
-          options={[
-            { value: 'aus', label: 'Ausgeschaltet' },
-            { value: 'an', label: 'Eingeschaltet' },
-          ]}
-        />
-        <TextInput
-          label="IMAP-Server"
-          value={form.imapHost}
-          hint="z.B. imap.ionos.de"
-          onChange={(v) => patch({ imapHost: v })}
-        />
-        <TextInput
-          label="Port"
-          type="number"
-          value={form.imapPort}
-          hint="993 verschlüsselt, 143 mit STARTTLS"
-          onChange={(v) => patch({ imapPort: Number(v) })}
-        />
-      </div>
-      <div className="grid-3">
-        <Select
-          label="Verschlüsselung"
-          value={form.imapSecure ? 'ssl' : 'starttls'}
-          onChange={(v) => patch({ imapSecure: v === 'ssl' })}
-          options={[
-            { value: 'ssl', label: 'Durchgehend (Port 993)' },
-            { value: 'starttls', label: 'STARTTLS (Port 143)' },
-          ]}
-        />
-        <TextInput
-          label="Benutzername"
-          value={form.imapUser}
-          hint="Leer = wie beim Postausgang"
-          onChange={(v) => patch({ imapUser: v })}
-        />
-        <TextInput
-          label="Ordner"
-          value={form.imapSentFolder}
-          hint="Leer = automatisch bestimmen"
-          onChange={(v) => patch({ imapSentFolder: v })}
-        />
-      </div>
-      <div className="field">
-        <label>IMAP-Passwort</label>
-        <input
-          type="password"
-          value={imapPasswort}
-          placeholder={
-            form.imapPasswordSet ? '•••••••• (hinterlegt)' : 'leer = wie beim Postausgang'
-          }
-          onChange={(e) => {
-            setImapPasswort(e.target.value);
-            patch({ imapPassword: e.target.value });
-          }}
-        />
-        <div className="hint">
-          Bei einem Postfach ist es dasselbe wie beim Postausgang – dann leer lassen.
-        </div>
-      </div>
-
       <div className="section-title">Erproben</div>
       <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
         Erst speichern, dann prüfen – geprüft werden die gespeicherten Angaben.
@@ -1072,11 +974,6 @@ function MailSection({
         <button onClick={testmail} disabled={busy || !testAdresse}>
           Testmail senden
         </button>
-        {form.imapCopyEnabled && (
-          <button onClick={pruefeOrdner} disabled={busy}>
-            Gesendet-Ordner prüfen
-          </button>
-        )}
       </div>
     </div>
   );

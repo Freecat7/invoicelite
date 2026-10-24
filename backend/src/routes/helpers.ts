@@ -53,9 +53,12 @@ export const dateSchema = z
   });
 
 /**
- * Restliche Durchlaeufe einer Wiederholung; leer bedeutet "unbegrenzt".
- * z.coerce.number() wuerde null und '' still zu 0 machen, daher pruefen wir
- * leere Werte vor der Umwandlung.
+ * Restliche Durchläufe einer Wiederholung; leer bedeutet "unbegrenzt".
+ *
+ * z.coerce.number() würde null und '' still zu 0 machen, daher prüfen wir
+ * leere Werte vor der Umwandlung. Und 0 ist kein gültiger Stand: eine
+ * Vorlage mit null verbleibenden Durchläufen erzeugte noch einen Beleg und
+ * zählte dann auf -1. Wer die Wiederholung stoppen will, setzt den Status.
  */
 export const cyclesSchema = z
   .union([z.string(), z.number(), z.null()])
@@ -63,10 +66,10 @@ export const cyclesSchema = z
   .transform((value, ctx) => {
     if (value === undefined || value === null || value === '') return null;
     const zahl = Number(value);
-    if (!Number.isInteger(zahl) || zahl < 0) {
+    if (!Number.isInteger(zahl) || zahl < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Bitte eine ganze Zahl ab 0 angeben',
+        message: 'Bitte eine ganze Zahl ab 1 angeben oder das Feld leer lassen',
       });
       return z.NEVER;
     }

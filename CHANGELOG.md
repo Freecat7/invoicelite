@@ -11,6 +11,22 @@ ob das Schema oder die Steuerlogik betroffen ist.
 
 ## Unveröffentlicht
 
+Schema geändert: diese Version entfernt Spalten. Vorher sichern.
+
+- Wiederkehrende Belege liefen auf "beendet", sobald ein Beleg erzeugt wurde, und der
+  Zähler stand auf -1. Ursache war eine 0 im Feld "verbleibende Durchläufe", die aus der
+  Zeit stammt, in der ein geleertes Feld still als 0 gespeichert wurde. Drei Änderungen:
+  0 wird als Eingabe abgelehnt, der Zähler geht nie unter null, und ist er aufgebraucht,
+  wird er geleert statt auf 0 zu stehen. Damit genügt künftig das Umstellen des Status
+  zum Reaktivieren. Wiederkehrende Ausgaben hatten denselben Fehler und sind mit
+  behoben. Eine Migration repariert bestehende Vorlagen beider Arten; deren Status
+  bleibt unberührt und muss einmal von Hand auf "aktiv" gestellt werden.
+- Die IMAP-Ablage im Ordner "Gesendet" ist entfallen. Eine Blindkopie an das eigene
+  Postfach löst dasselbe ohne zweite Verbindung und zweites Passwort. Das spart 20
+  Pakete, darunter den gesamten pino-Stapel. Die sieben imap-Spalten und das hinterlegte
+  IMAP-Passwort werden dabei gelöscht.
+- Der Name der Anwendung ist nicht mehr einstellbar und heißt immer invoicelite. Das Feld
+  in den Einstellungen und der öffentliche Endpunkt /api/branding sind entfallen.
 - Die Compose-Datei zieht jetzt das fertige Abbild statt es zu bauen. Für den Betrieb aus
   dem Quelltext liegt `docker-compose.build.yml` daneben. Wer bisher mit `build: .` lief,
   bekommt beim nächsten `docker compose up -d` das Abbild aus der Registry; das Volume und

@@ -270,7 +270,7 @@ export function RecurringExpensesPage({ settings }: { settings: Settings }) {
             <TextInput
               label="Durchläufe (optional)"
               type="number"
-              min="0"
+              min="1"
               value={editing.remainingCycles ?? ''}
               hint="Leer = unbegrenzt"
               onChange={(v) =>

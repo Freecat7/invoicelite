@@ -613,6 +613,43 @@ s, b = call("PUT", f"/recurring-invoices/{TPL}", {
 })
 check("unsinnige Durchlaeufe 400", s == 400, f"war {s}")
 
+# Null verbleibende Durchlaeufe sind kein gueltiger Stand: so eine Vorlage
+# erzeugte noch einen Beleg und zaehlte dann auf -1 herunter.
+s, b = call("POST", "/recurring-invoices", {
+    "clientId": KUNDE, "frequency": "monthly", "remainingCycles": 0,
+    "lines": [{"description": "Pauschale", "quantity": 1, "unitPrice": 180}],
+})
+check("Durchlaeufe 0 wird abgelehnt", s == 400, f"war {s}")
+
+# Ist der Zaehler aufgebraucht, wird er geleert statt auf 0 zu stehen.
+# Sonst wuerde das Reaktivieren sofort wieder zum Ende fuehren.
+s, auf = call("POST", "/recurring-invoices", {
+    "clientId": KUNDE, "title": "Einmal", "frequency": "monthly",
+    "nextRunDate": iso(TODAY - timedelta(days=1)), "generateAs": "draft",
+    "remainingCycles": 1,
+    "lines": [{"description": "Pauschale", "quantity": 1, "unitPrice": 180}],
+})
+call("POST", "/recurring-invoices/run")
+s, b = call("GET", f"/recurring-invoices/{auf['id']}")
+check("aufgebrauchter Zaehler wird geleert", b["remainingCycles"] is None,
+      repr(b["remainingCycles"]))
+check("aufgebrauchte Vorlage ist beendet", b["status"] == "finished", b["status"])
+
+# Reaktivieren muss jetzt allein ueber den Status gehen.
+s, b = call("PUT", f"/recurring-invoices/{auf['id']}", {
+    "clientId": KUNDE, "title": "Einmal", "frequency": "monthly",
+    "nextRunDate": iso(TODAY - timedelta(days=1)), "generateAs": "draft",
+    "status": "active",
+    "lines": [{"description": "Pauschale", "quantity": 1, "unitPrice": 180}],
+})
+check("Status allein reicht zum Reaktivieren", s == 200 and b["status"] == "active",
+      f"{s} {b.get('status')}")
+call("POST", "/recurring-invoices/run")
+s, b = call("GET", f"/recurring-invoices/{auf['id']}")
+check("reaktiviert ohne Zaehler laeuft unbegrenzt weiter",
+      b["status"] == "active" and b["remainingCycles"] is None,
+      f"{b['status']}, Zaehler {b['remainingCycles']}")
+
 s, b = call("POST", "/recurring-invoices", {"clientId": KUNDE, "generateAs": "sent", "lines": []})
 check("ungueltiges generateAs 400", s == 400, f"war {s}")
 
@@ -727,7 +764,7 @@ check("unbekannter Leistungszeitraum 400", s == 400, f"war {s}")
 # Ein hinterherhinkender Zaehler darf den Lauf nicht blockieren
 s, cfg_n = call("GET", "/settings")
 cfg_n = {k: v for k, v in cfg_n.items()
-         if k not in ("id", "logoPath", "smtpPasswordSet", "imapPasswordSet")}
+         if k not in ("id", "logoPath", "smtpPasswordSet")}
 s, vorhanden = call("GET", "/invoices")
 stand_vorher = len(vorhanden)
 call("PUT", "/settings", {**cfg_n, "invoiceNumberNext": 1})
@@ -803,6 +840,35 @@ s, rexp = call("POST", "/recurring-expenses", {
 check("wiederkehrende Ausgabe anlegen", s == 201, f"{s}")
 s, b = call("POST", "/recurring-invoices/run")
 check("Lauf erzeugt Ausgabe", b["expensesCreated"] >= 1, str(b["expensesCreated"]))
+
+# Dieselben Zusicherungen wie bei den Rechnungen: 0 ist kein gueltiger
+# Zaehlerstand, ein aufgebrauchter Zaehler wird geleert, und danach genuegt
+# der Status zum Reaktivieren.
+s, b = call("POST", "/recurring-expenses", {
+    "vendor": "Hoster", "amount": 10, "frequency": "monthly", "remainingCycles": 0,
+})
+check("Ausgabe: Durchlaeufe 0 wird abgelehnt", s == 400, f"war {s}")
+
+basis_aus = {
+    "vendor": "Einmalig", "category": "IT", "amount": 29.9, "taxRate": 19,
+    "frequency": "monthly", "nextRunDate": iso(TODAY - timedelta(days=1)),
+}
+s, einmal = call("POST", "/recurring-expenses", {**basis_aus, "remainingCycles": 1})
+call("POST", "/recurring-invoices/run")
+s, b = call("GET", f"/recurring-expenses/{einmal['id']}")
+check("Ausgabe: aufgebrauchter Zaehler wird geleert", b["remainingCycles"] is None,
+      repr(b["remainingCycles"]))
+check("Ausgabe: aufgebrauchte Vorlage ist beendet", b["status"] == "finished", b["status"])
+
+s, b = call("PUT", f"/recurring-expenses/{einmal['id']}", {**basis_aus, "status": "active"})
+check("Ausgabe: Status allein reicht zum Reaktivieren",
+      s == 200 and b["status"] == "active" and b["remainingCycles"] is None,
+      f"{s} {b.get('status')} {b.get('remainingCycles')}")
+call("POST", "/recurring-invoices/run")
+s, b = call("GET", f"/recurring-expenses/{einmal['id']}")
+check("Ausgabe: reaktiviert laeuft unbegrenzt weiter",
+      b["status"] == "active" and b["remainingCycles"] is None,
+      f"{b['status']}, Zaehler {b['remainingCycles']}")
 
 # ───────────────────────── Dashboard ─────────────────────────
 head("Uebersicht")
@@ -1014,24 +1080,16 @@ check("ungültige Testadresse 400", s == 400, f"war {s}")
 
 check("Angebotsmail-Felder vorhanden",
       "quoteMailSubject" in cfg_mail and "quoteMailBodyHtml" in cfg_mail, "fehlen")
-check("IMAP-Felder vorhanden",
-      "imapHost" in cfg_mail and "imapSentFolder" in cfg_mail, "fehlen")
-check("IMAP-Passwort wird nie zurückgeliefert",
-      "imapPasswordEnc" not in cfg_mail, "im Klartext dabei!")
-check("Nur der IMAP-Merker kommt zurück", "imapPasswordSet" in cfg_mail, "fehlt")
-
-s, b = call("PUT", "/settings", {**cfg_mail, "imapPort": 0})
-check("IMAP-Port 0 abgelehnt", s == 400, f"war {s}")
-s, b = call("PUT", "/settings", {**cfg_mail, "imapPassword": "geheim123",
-                                 "imapHost": "localhost"})
-check("IMAP-Angaben speichern", s == 200 and b.get("imapPasswordSet") is True,
-      str(b.get("imapPasswordSet")))
-s, b = call("PUT", "/settings", {**cfg_mail, "imapHost": "localhost"})
-check("leeres IMAP-Passwortfeld lässt das hinterlegte stehen",
-      b.get("imapPasswordSet") is True, "wurde verworfen")
-s, b = call("DELETE", "/settings/imap-password")
-check("IMAP-Passwort entfernen", s == 200 and b.get("imapPasswordSet") is False,
-      str(b.get("imapPasswordSet")))
+# Die Kopie im eigenen Postfach laeuft ueber eine Blindkopie, nicht mehr
+# ueber IMAP. Die imap*-Felder sind samt Spalten entfallen.
+check("keine IMAP-Felder mehr", not any(k.startswith("imap") for k in cfg_mail),
+      str([k for k in cfg_mail if k.startswith("imap")]))
+check("Blindkopie-Feld vorhanden", "mailBcc" in cfg_mail, "fehlt")
+s, b = call("PUT", "/settings", {**cfg_mail, "mailBcc": "kopie@example.com"})
+check("Blindkopie speichern", s == 200 and b.get("mailBcc") == "kopie@example.com",
+      repr(b.get("mailBcc")))
+s, b = call("POST", "/mail/test-sent-folder", {})
+check("IMAP-Endpunkt ist weg", s == 404, f"war {s}")
 
 # Angebotsversand
 s, qmail = call("POST", "/quotes", {"clientId": KUNDE,
@@ -1059,7 +1117,7 @@ head("Wechsel der Besteuerung")
 def einstellen(**aend):
     s, akt = call("GET", "/settings")
     akt = {k: v for k, v in akt.items()
-           if k not in ("id", "logoPath", "smtpPasswordSet", "imapPasswordSet")}
+           if k not in ("id", "logoPath", "smtpPasswordSet")}
     akt.update(aend)
     return call("PUT", "/settings", akt)
 
@@ -1094,15 +1152,14 @@ s, b = call("POST", "/quotes", {"clientId": KUNDE, "taxRegime": "quatsch", "line
 check("ungültige Besteuerung im Angebot 400", s == 400, f"war {s}")
 einstellen(taxRegime="small_business")
 
-# Oeffentlicher Endpunkt fuer die Anmeldeseite
-jar.clear()
+# Der Name der Anwendung ist nicht mehr einstellbar; der oeffentliche
+# Endpunkt dafuer ist entfallen. Angemeldet geprueft, denn requireAuth
+# greift vor dem 404 - ohne Sitzung antwortet jeder /api-Pfad mit 401.
 s, marke = call("GET", "/branding")
-check("Name ohne Anmeldung abrufbar", s == 200 and "appName" in marke, f"{s}")
-check("Der Endpunkt verrät sonst nichts", set(marke.keys()) == {"appName"}, str(marke.keys()))
-call("POST", "/auth/login", {"email": EMAIL, "password": PASSWORD})
+check("Branding-Endpunkt ist weg", s == 404, f"war {s}")
 
 s, b = call("GET", "/settings")
-check("Anwendungsname vorhanden", "appName" in b, "fehlt")
+check("kein Anwendungsname in den Einstellungen", "appName" not in b, "noch da")
 check("Akzentfarbe der Oberfläche vorhanden", "uiAccentColor" in b, "fehlt")
 s, b = einstellen(uiAccentColor="rot")
 check("ungültige Akzentfarbe 400", s == 400, f"war {s}")

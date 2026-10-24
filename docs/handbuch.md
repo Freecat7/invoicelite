@@ -285,25 +285,24 @@ und Text sind getrennt von der Rechnung einstellbar; Platzhalter dort: `{nummer}
 {firma} {betrag} {datum} {gueltigbis}`. Der Status des Angebots bleibt unberührt, weil ein
 Angebot oft mehrfach hinausgeht.
 
-## Kopie im Ordner „Gesendet"
+## Kopie im eigenen Postfach
 
-SMTP stellt nur zu – eine Kopie im eigenen Postfach entsteht dabei **nicht**. Wer die Rechnung
-später im Mailprogramm unter „Gesendet" sucht, findet sonst nichts. Unter *Einstellungen →
-Mailversand → Kopie im Ordner „Gesendet"* lässt sich das einschalten: invoicelite legt jede
-verschickte Nachricht zusätzlich per IMAP ab.
+SMTP stellt nur zu, eine Kopie im eigenen Postfach entsteht dabei **nicht**. Wer die Rechnung
+später im Mailprogramm sucht, findet sonst nichts.
 
-Der Ordner wird automatisch bestimmt – zuerst über den Sonderordner `\Sent` (RFC 6154), sonst
-über gängige Namen (`Sent`, `Gesendet`, `Sent Items`, …). Findet sich keiner, nennt die
-Fehlermeldung die vorhandenen Ordner, und der Name lässt sich von Hand eintragen.
-Benutzername und Passwort dürfen leer bleiben – dann gelten die des Postausgangs, was bei
-einem Postfach der Normalfall ist.
+Dafür gibt es unter *Einstellungen → Mailversand* das Feld **Blindkopie an (optional)**. Trägt
+man dort die eigene Adresse ein, geht jede verschickte Nachricht zusätzlich als Blindkopie
+dorthin. Der Empfänger sieht sie nicht. In den meisten Postfächern landet sie damit im
+Eingang; wer sie im Ordner „Gesendet" haben will, legt im Mailprogramm eine Regel an, die
+Nachrichten von der eigenen Adresse dorthin verschiebt.
 
-Wichtig: Ein Fehlschlag beim Ablegen macht den Versand **nicht** rückgängig. Die Mail ist beim
-Kunden, nur die Kopie fehlt; das steht dann im Protokoll.
+Bis Version 1.0 legte invoicelite die Nachricht stattdessen per IMAP selbst im Ordner
+„Gesendet" ab. Das ist entfallen: es verlangte eine zweite Verbindung, ein zweites Passwort
+und brachte acht weitere Abhängigkeiten mit, während die Blindkopie dasselbe mit einem
+Eingabefeld löst.
 
-Bibliotheken: [nodemailer](https://github.com/nodemailer/nodemailer) (MIT-0, ohne eigene
-Abhängigkeiten) für den Versand und [imapflow](https://github.com/postalsys/imapflow) (MIT,
-gleiche Herausgeber) für die Ablage.
+Bibliothek für den Versand: [nodemailer](https://github.com/nodemailer/nodemailer) (MIT-0,
+ohne eigene Abhängigkeiten).
 
 ## Festschreibung (GoBD)
 

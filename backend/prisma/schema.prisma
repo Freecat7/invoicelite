@@ -55,9 +55,6 @@ model CompanySettings {
   // Installationen setzt die Migration ihn auf true, damit dort nichts
   // aufpoppt.
   setupCompleted Boolean @default(false)
-  // Name der Anwendung in Oberflaeche und Anmeldung. Wer die Software unter
-  // eigenem Namen betreibt, aendert das hier statt im Quelltext.
-  appName        String  @default("invoicelite")
   email       String @default("")
   phone       String @default("")
   website     String @default("")
@@ -135,19 +132,6 @@ model CompanySettings {
   quoteMailSubject  String @default("Angebot {nummer}")
   quoteMailBody     String @default("")
   quoteMailBodyHtml String @default("")
-
-  // --- Kopie im Ordner "Gesendet" ---
-  // SMTP stellt nur zu; eine Kopie im Postfach entsteht dabei nicht. Dafuer
-  // wird die Nachricht zusaetzlich per IMAP abgelegt.
-  imapCopyEnabled  Boolean @default(false)
-  imapHost         String  @default("")
-  imapPort         Int     @default(993)
-  imapSecure       Boolean @default(true)
-  imapUser         String  @default("")
-  imapPasswordEnc  String  @default("")
-  // Leer = Ordner automatisch bestimmen (Sonderordner \Sent, sonst
-  // gaengige Namen wie "Sent" oder "Gesendet").
-  imapSentFolder   String  @default("")
 
   updatedAt DateTime @updatedAt
 }

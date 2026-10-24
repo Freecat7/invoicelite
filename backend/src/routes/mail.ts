@@ -6,7 +6,6 @@ import {
   sendeFreigegebene,
   sendeTestmail,
 } from '../services/mailer';
-import { pruefeImapVerbindung } from '../services/sentFolder';
 import { asyncHandler, parseBody } from './helpers';
 
 export const mailRouter = Router();
@@ -43,15 +42,5 @@ mailRouter.post(
   '/run',
   asyncHandler(async (_req, res) => {
     res.json(await sendeFreigegebene());
-  }),
-);
-
-/** Prueft die IMAP-Anmeldung und meldet den gefundenen Ordner zurueck. */
-mailRouter.post(
-  '/test-sent-folder',
-  requireSession,
-  asyncHandler(async (_req, res) => {
-    const ordner = await pruefeImapVerbindung();
-    res.json({ ok: true, ordner });
   }),
 );

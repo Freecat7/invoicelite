@@ -70,7 +70,7 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 | | |
 | --- | --- |
 | Belege | Angebote, Rechnungen, Gutschriften, wiederkehrende Rechnungen |
-| Versand | SMTP, automatisch am Tag nach der Freigabe, mit Kopie im Ordner "Gesendet" |
+| Versand | SMTP, automatisch am Tag nach der Freigabe, auf Wunsch mit Blindkopie an das eigene Postfach |
 | Auswertung | Übersicht nach Monat, Jahr oder freiem Zeitraum; EÜR fürs Finanzamt |
 | Schnittstelle | Vollständige REST-API mit Token, dokumentiert in den Einstellungen |
 | Sonstiges | Ausgaben mit Belegupload, EPC-QR, Sicherung als ZIP, helles und dunkles Schema |

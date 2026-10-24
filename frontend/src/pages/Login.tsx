@@ -1,19 +1,9 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { api } from '../api/client';
 import { User } from '../types';
 import { Alert } from '../components/ui';
 
 export function LoginPage({ onLogin }: { onLogin: (user: User) => void }) {
-  // Der Name kommt vom oeffentlichen Endpunkt - hier gibt es noch keine
-  // Sitzung, mit der sich die Einstellungen lesen liessen.
-  const [appName, setAppName] = useState('invoicelite');
-  useEffect(() => {
-    fetch('/api/branding')
-      .then((r) => r.json())
-      .then((b) => b.appName && setAppName(b.appName))
-      .catch(() => undefined);
-  }, []);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,7 +26,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: User) => void }) {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <h1>{appName}</h1>
+        <h1>invoicelite</h1>
         <div className="subtitle">Bitte melden Sie sich an.</div>
 
         {error && <Alert kind="error">{error}</Alert>}

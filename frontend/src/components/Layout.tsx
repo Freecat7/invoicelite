@@ -105,12 +105,10 @@ const NAV_SECTIONS: {
 export function Layout({
   user,
   onLogout,
-  appName,
   children,
 }: {
   user: User;
   onLogout: () => void;
-  appName: string;
   children: ReactNode;
 }) {
   const [theme, toggleTheme] = useTheme();
@@ -118,7 +116,7 @@ export function Layout({
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">{appName}</div>
+        <div className="brand">invoicelite</div>
         <nav>
           {NAV_SECTIONS.map((section) => (
             <div key={section.title}>

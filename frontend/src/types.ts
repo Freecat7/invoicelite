@@ -18,7 +18,6 @@ export interface Settings {
   accentColor: string;
   uiAccentColor: string;
   setupCompleted: boolean;
-  appName: string;
   email: string;
   phone: string;
   website: string;
@@ -75,16 +74,6 @@ export interface Settings {
   quoteMailSubject: string;
   quoteMailBody: string;
   quoteMailBodyHtml: string;
-  imapCopyEnabled: boolean;
-  imapHost: string;
-  imapPort: number;
-  imapSecure: boolean;
-  imapUser: string;
-  imapSentFolder: string;
-  /** Nur ein Merker - das Passwort verlaesst den Server nie. */
-  imapPasswordSet?: boolean;
-  /** Nur zum Schreiben; leer bedeutet "unveraendert lassen". */
-  imapPassword?: string;
 }
 
 export interface Client {
