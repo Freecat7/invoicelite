@@ -10,7 +10,7 @@ ein `docker compose up -d`.
 [![Build und Tests](https://github.com/Freecat7/invoicelite/actions/workflows/ci.yml/badge.svg)](https://github.com/Freecat7/invoicelite/actions/workflows/ci.yml)
 [![Lizenz: Sustainable Use](https://img.shields.io/badge/Lizenz-Sustainable%20Use-blue.svg)](LICENSE)
 
-![Übersicht](docs/screenshots/uebersicht.png)
+![Rechnung anlegen, Kleinunternehmerregelung wählen, freigeben](docs/screenshots/demo.gif)
 
 ## Warum
 
@@ -51,7 +51,7 @@ beim Start ausstehende Datenbankmigrationen anwendet, lohnt vorher ein Blick in 
 bestimmten Version bleiben will, legt eine `.env` daneben:
 
 ```
-INVOICELITE_VERSION=1.0.0
+INVOICELITE_VERSION=2.0.0
 ```
 
 Aus dem Quelltext bauen, etwa zum Entwickeln:
@@ -127,7 +127,7 @@ Ohne jede Gewährleistung, auch nicht für Marktreife oder Eignung für einen be
 ## Mitwirken
 
 Siehe [CONTRIBUTING.md](CONTRIBUTING.md). Kurz: erst ein Issue, dann der Pull Request, und
-die Testreihe (`scripts/api-test.py`, derzeit 286 Prüfungen) muss durchlaufen.
+die Testreihe (`scripts/api-test.py`, derzeit 292 Prüfungen) muss durchlaufen.
 
 ## Handbuch
 
